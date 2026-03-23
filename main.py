@@ -64,9 +64,7 @@ def main():
     try:
         parserObj = PSProjectParser(str(xml_path))
         projectObj = parserObj.parse()
-        # debug print(f"✅ Proyecto: {projectObj.project_name}")
-        # debug print(f"✅ Descripción: {projectObj.description}")
-        printToConsole(projectObj)        
+        # printToConsole(projectObj)        
 
     except Exception as e:
         print(f"❌ Error al parsear el XML: {e}", file=sys.stderr)

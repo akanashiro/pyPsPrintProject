@@ -56,7 +56,7 @@ def printToConsole(projectObj_: PSProject):
         contaNbr += 1
 
     print ("=================================")
-    
+
     contaNbr = 1
     for field in projectObj_.fields:
         field.getFieldInfo()
@@ -75,6 +75,24 @@ def printToConsole(projectObj_: PSProject):
 
     print ("=================================")
     contaNbr = 1
+
+    for sql in projectObj_.sql_objects:
+        sql.getSQLInfo()
+        if contaNbr < len(projectObj_.sql_objects):
+            print ("--------------------------------")
+        contaNbr += 1
+
+    print ("=================================")
+    contaNbr = 1
+
+    for pcode in projectObj_.ap_peoplecode:
+        pcode.getPeopleCodeInfo()
+        if contaNbr < len(projectObj_.ap_peoplecode):
+            print ("--------------------------------")
+        contaNbr += 1
+
+    print ("=================================")
+
 
 # ---------------------------------------------------------------------------
 # Construcción del contexto Jinja2
@@ -117,16 +135,12 @@ def build_context(project: "PSProject") -> dict:
             # "has_xlat": bool(rf.translate_values),
         }
 
-    def pc_to_dict(pc):
+    def appPackage_pc_to_dict(pc):
         return {
-            "record_name": pc.record_name,
-            "field_name": pc.field_name,
-            "event_type": pc.event_type,
-            "full_name": f"{pc.record_name}.{pc.field_name}.{pc.event_type}" if pc.field_name
-                         else f"{pc.record_name}.{pc.event_type}",
+            "app_package": pc.app_package,
+            "code_type": pc.code_type,
+            "event": pc.event,
             "source_code": pc.source_code,
-            "functions": pc.functions,
-            "has_functions": bool(pc.functions),
         }
 
     def ae_step_to_dict(step):
@@ -183,6 +197,39 @@ def build_context(project: "PSProject") -> dict:
             #"xlat_count": len(f.translate_values),
         })
 
+    # --- SQL Objects ---
+    sql_objects = [
+        {
+            "name": s.name,
+            "sql_type": s.sql_type,
+            "description": s.description or "",
+            "sql_text": s.sql_text,
+        }
+        for s in project.sql_objects
+    ]
+
+    # --- Pages ---
+    pages = [
+        {
+            "name": p.name,
+            "page_type": p.page_type,
+            "description": p.description or ""
+            """
+            "controls": [
+                {
+                    "control_type": c.control_type,
+                    "record_name": c.record_name or "",
+                    "field_name": c.field_name or "",
+                    "label": c.label or "",
+                }
+                for c in p.controls
+            ],
+            "control_count": len(p.controls),
+            """
+        }
+        for p in project.pages
+    ]
+
     # --- Processes ---
     processes = [
         {
@@ -194,14 +241,30 @@ def build_context(project: "PSProject") -> dict:
         for p in project.processes
     ]
 
+    # --- Application Package PeopleCode (agrupado por App Package) ---
+    pc_by_app_package: dict[str, list] = {}
+    for pc in project.ap_peoplecode:
+        key = pc.app_package
+        pc_by_app_package.setdefault(key, []).append(appPackage_pc_to_dict(pc))
+
+    ap_peoplecode_grp = [
+        {"app_package": app_pkg, "events": evts}
+        for app_pkg, evts in sorted(pc_by_app_package.items())
+    ]    
+
+
     # --- Resumen / Stats ---
     summary = {
         "records":           len(records),
-        "fields":            len(fields),        
+        "fields":            len(fields),   
+        "pages":             len(project.pages),
+        "sql_objects":       len(sql_objects),             
         "processes":         len(processes),
+        "ap_peoplecode":     len(ap_peoplecode_grp),
+        "sql_objects":       len(project.sql_objects),
         "total":             sum([
-            len(records), len(fields), len(processes)])
-
+            len(records), len(fields), len(processes), len(pages), len(ap_peoplecode_grp),len(sql_objects)]
+        )
     }
 
     # Flags de presencia (para mostrar/ocultar secciones en la plantilla)
@@ -214,7 +277,10 @@ def build_context(project: "PSProject") -> dict:
         "has":                has,
         "records":            records,
         "fields":             fields,
-        "processes":         processes
+        "pages":              pages,
+        "sql_objects":        sql_objects,
+        "processes":          processes,
+        "ap_peoplecode":      ap_peoplecode_grp
     }
 
 
@@ -273,7 +339,7 @@ class MarkdownGenerator:
             ("Pages",              "pages"),
             ("Components",         "components"),
             ("Menus",              "menus"),
-            ("PeopleCode Events",  "peoplecode_events"),
+            ("App Package PeopleCode",  "ap_peoplecode"),
             ("SQL Objects",        "sql_objects"),
             ("App Engine Programs","app_engines"),
             ("App Packages",       "app_packages"),
@@ -353,6 +419,63 @@ class MarkdownGenerator:
                         a(f"| {xv['value']} | {xv['long_name']} | {xv['short_name']} | {xv['effective_date']} | {xv['status']} |")
                     a("")                    
                 """
+
+       # Pages
+        if ctx["has"]["pages"]:
+            a("---")
+            a("## Pages")
+            a("")
+            for pg in ctx["pages"]:
+                a(f"### {pg['name']}")
+                a("")
+                a(f"**Tipo:** {pg['page_type']}  ")
+                if pg["description"]:
+                    a(f"**Descripción:** {pg['description']}  ")
+                """
+                a(f"**Controles:** {pg['control_count']}  ")
+                a("")
+                
+                if pg["controls"]:
+                    a("| Control | Record | Campo | Label |")
+                    a("|---------|--------|-------|-------|")
+                    for ctrl in pg["controls"]:
+                        a(f"| {ctrl['control_type']} | {ctrl['record_name']} | {ctrl['field_name']} | {ctrl['label']} |")
+                    a("")
+                """
+
+
+        # SQL Objects
+        if ctx["has"]["sql_objects"]:
+            a("---")
+            a("## SQL Objects")
+            a("")
+            for sql in ctx["sql_objects"]:
+                a(f"### {sql['name']}")
+                a("")
+                if sql["description"]:
+                    a(f"**Descripción:** {sql['description']}  ")
+                a("")
+                a("```sql")
+                a(sql["sql_text"])
+                a("```")
+                a("")
+
+        # PeopleCode
+        if ctx["has"]["ap_peoplecode"]:
+            a("---")
+            a("## PeopleCode")
+            a("")
+            for group in ctx["ap_peoplecode"]:
+                a(f"### Application Package: {group['app_package']}")
+                a("")
+                for evt in group["events"]:
+                    a(f"#### {evt['event']}")
+                    a("")                    
+                    a("```peoplecode")
+                    a(evt["source_code"])
+                    a("```")
+                    a("")
+
         # Processes
         if ctx["has"]["processes"]:
             a("---")

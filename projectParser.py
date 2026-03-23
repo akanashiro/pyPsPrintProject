@@ -66,6 +66,45 @@ class RecordDefinition:
             print(f"       Field {conta}. {recField.name} | Type: {helpers.getFieldTypeDescription(recField.field_type)} | Length: {recField.length} | Decimals: {recField.decimals} | Is Key: {recField.is_key}")
             conta += 1
 
+@dataclass
+class SQLDefinition:
+    name: str
+    sql_type: str             # SQL Object, View, etc.
+    sql_text: str = ""
+    description: Optional[str] = None
+    
+    def getSQLInfo(self):
+        if self.sql_type == "SQL Object":
+            print (f"  🗂️  SQL Object: {self.name}\n  📄 Description: {self.description}\n  📄 Type: {self.sql_type}\n  📄 SQL Text: {self.sql_text}")
+
+
+@dataclass
+class PageControl:
+    control_type: str         # EditBox, DropDown, CheckBox, RadioButton, Grid, SubPage, etc.
+    record_name: Optional[str] = None
+    field_name: Optional[str] = None
+    label: Optional[str] = None
+    occurrence: Optional[int] = None
+
+
+@dataclass
+class PageDefinition:
+    name: str
+    page_type: str            # Standard, Secondary, Popup, etc.
+    #controls: list[PageControl] = field(default_factory=list)
+    description: Optional[str] = None
+
+@dataclass
+class AppPackagePCDefinition:
+    app_package: str = ""
+    code_type: str  ="Application Package PeopleCode"  
+    event: str =""          
+    source_code: str = ""
+    #functions: list[str] = field(default_factory=list)
+
+    def getPeopleCodeInfo(self):
+       print (f"  🗂️  📄 Code Type: {self.code_type}\n PeopleCode Event: {self.app_package} {self.event}\n    📄 Source Code: {self.source_code}")
+
 
 @dataclass
 class ProcessDefinition:
@@ -91,13 +130,13 @@ class PSProject:
     # Definiciones por tipo
     records: list[RecordDefinition] = field(default_factory=list)    
     fields: list[FieldDefinition] = field(default_factory=list)
+    sql_objects: list[SQLDefinition] = field(default_factory=list)
+    pages: list[PageDefinition] = field(default_factory=list)    
     processes: list[ProcessDefinition] = field(default_factory=list)
+    ap_peoplecode: list[AppPackagePCDefinition] = field(default_factory=list)    
     """    
-    pages: list[PageDefinition] = field(default_factory=list)
     components: list[ComponentDefinition] = field(default_factory=list)
     menus: list[MenuDefinition] = field(default_factory=list)
-    peoplecode: list[PeopleCodeEvent] = field(default_factory=list)
-    sql_objects: list[SQLDefinition] = field(default_factory=list)
     app_engines: list[AppEngineProgram] = field(default_factory=list)
     app_packages: list[AppPackageDefinition] = field(default_factory=list)
     messages: list[MessageDefinition] = field(default_factory=list)
@@ -137,7 +176,7 @@ class PSProject:
 
         return None
 
-    def _getRecordDefinition(self, recordNameStr_: str, rootNode_) -> RecordDefinition | None:
+    def _getRecordDefinition(self, recordNameStr_: str, rootNode_) -> RecordDefinition :
 
         for instance in rootNode_.iter("instance"):            
             if instance.get("class") == "RDM":         
@@ -168,9 +207,9 @@ class PSProject:
                                 parent_record=szParentRecNameStr
                             )
                             return recordObj
-        return None
+        #return None
 
-    def _getFieldDefinition(self, fieldNameStr_: str, rootNode_) -> RecordDefinition | None:
+    def _getFieldDefinition(self, fieldNameStr_: str, rootNode_) -> FieldDefinition :
 
         for instance in rootNode_.iter("instance"):            
             if instance.get("class") == "FIELD":         
@@ -199,9 +238,9 @@ class PSProject:
                             )
 
                             return fieldObj
-        return None
+        # return None
 
-    def _getProcessDefinition(self, processTypeStr_: str, processNameStr_: str, rootNode_) -> ProcessDefinition | None:
+    def _getProcessDefinition(self, processTypeStr_: str, processNameStr_: str, rootNode_) -> ProcessDefinition:
 
         for instance in rootNode_.iter("instance"):            
             if instance.get("class") == "PSD":         
@@ -223,8 +262,105 @@ class PSProject:
                             )
 
                             return procDefnObj
-        return None
+        #return None
 
+    def _getSQLDefinition(self, sqlNameStr_: str, objectValue1_: str, rootNode_) -> SQLDefinition :
+        for instance in rootNode_.iter("instance"):            
+            if instance.get("class") == "SRM":         
+                sqlNode = instance.find(".//rowset[@name='SrmDefn']")
+
+                if sqlNode is not None:
+                    for sqlRow in sqlNode.findall("row"):
+                        szSqlIdStr = sqlRow.findtext("szSqlId", default="").strip()
+                        szSqlTypeStr = sqlRow.findtext("szSqlType", default="").strip()  
+                        
+                        # print(f"Debug SQL: szSqlId={szSqlIdStr}, szSqlType={szSqlTypeStr}, objectValue1={objectValue1_}")
+
+                        if szSqlIdStr == sqlNameStr_ and szSqlTypeStr == objectValue1_ and objectValue1_ == "0":
+
+                            szDescrStr = sqlRow.find(
+                                "lpStmtT"
+                                "/rowset[@name='SrmStmt']/row"
+                                "/szDescr"
+                            ).text
+
+                            print (f"Debug SQL: szDescr={szDescrStr}")
+
+
+                            szSQLTextStr = sqlRow.find(
+                                "lpStmtT"
+                                "/rowset[@name='SrmStmt']/row"
+                                "/lpszSqlText"
+                                "/rowset[@name='char']/row"
+                                "/lpszSqlText"
+                            ).text
+
+                            print (f"Debug SQL: szSQLText={szSQLTextStr}")
+
+                            sqlDefnObj = SQLDefinition(
+                                name=szSqlIdStr,
+                                sql_type="SQL Object",
+                                description=szDescrStr,
+                                sql_text=szSQLTextStr
+                            )
+
+                            return sqlDefnObj
+        #return None
+
+    def _getAppPackagePeopleCodeDefinition(self, packageNameStr_: str, objectValue1_: str, objectValue2_: str, objectValue3_: str, rootNode_) -> AppPackagePCDefinition :
+        for instance in rootNode_.iter("instance"):            
+            if instance.get("class") == "PCM":         
+                pcNode = instance.find(".//rowset[@name='PcmProg']")
+
+                if pcNode is not None:
+                    for pcRow in pcNode.findall("row"):
+                        szObjectValue_0Str = pcRow.findtext("szObjectValue_0", default="").strip()
+                        szObjectValue_1Str = pcRow.findtext("szObjectValue_1", default="").strip()
+                        szObjectValue_2Str = pcRow.findtext("szObjectValue_2", default="").strip()
+                        szObjectValue_3Str = pcRow.findtext("szObjectValue_3", default="").strip()
+
+                        if szObjectValue_0Str == packageNameStr_ and szObjectValue_1Str == objectValue1_ and szObjectValue_2Str == objectValue2_ and szObjectValue_3Str == objectValue3_:
+
+                            peopleCodeText = instance.find(".//peoplecode_text")       
+
+                            eventTypeStr = f"{packageNameStr_}:{objectValue1_}"
+                            if objectValue2_ != " ":
+                                eventTypeStr=f"{packageNameStr_}:{objectValue1_}:{objectValue2_}"
+                                if objectValue3_ != " ":
+                                    eventTypeStr=f"{packageNameStr_}:{objectValue1_}:{objectValue2_}:{objectValue3_}"
+
+                            pcEventObj = AppPackagePCDefinition(
+                                app_package=packageNameStr_,
+                                event=eventTypeStr,
+                                code_type="Application Package PeopleCode",
+                                source_code=peopleCodeText.text.strip()
+                            )
+
+                            return pcEventObj
+      #  return None
+
+    def _getPageDefinition(self, pageNameStr_: str, rootNode_) -> PageDefinition :
+        for instance in rootNode_.iter("instance"):            
+            if instance.get("class") == "PDM":         
+                pageNode = instance.find(".//rowset[@name='PdmDefn']")
+
+                if pageNode is not None:
+                    for pageRow in pageNode.findall("row"):
+                        szPnlNameStr = pageRow.findtext("szPnlName", default="").strip()
+                                                    
+                        if szPnlNameStr == pageNameStr_:
+                            ePnlTypeStr = pageRow.findtext("ePnlType", default="").strip()
+                            pageTypeDescrStr = helpers.getPageTypeDescription(ePnlTypeStr)
+                            szDescrStr = pageRow.findtext("szDescr", default="").strip() 
+
+                            pageObj = PageDefinition(
+                                name=pageNameStr_,
+                                page_type=pageTypeDescrStr,
+                                description=szDescrStr
+                            )
+
+                            return pageObj
+        #return None
 
     def _describeItems(self, objectTypeNode_, objectValue0_, objectValue1_, objectValue2_, objectValue3_, rootNode_):
 
@@ -262,41 +398,51 @@ class PSProject:
 
         match objectTypeNode_:
             case "0":
-                """
-                Definición de Record. Se debe obtener toda la información del record, incluyendo sus campos asociados.
-                """
+                # Definición de Record. Se debe obtener toda la información del record, incluyendo sus campos asociados.                
                 self.records.append(self._getRecordDefinition(objectValue0_, rootNode_))           
             case "2":
-                """
-                Definición de Field.
-                """
+                # Definición de Field.
                 self.fields.append(self._getFieldDefinition(objectValue0_, rootNode_)) 
-            case "4":
-                print(f"📄 Page: {objectValue_}")
+            #case "4":
+            #    print(f"📄 Page: {objectValue_}")
             case "5":
-                print(f"🔹 Component: {objectValue0_}")
+                # Definición de Página                
+                self.pages.append(self._getPageDefinition(objectValue0_, rootNode_))
             case "6":
+                # Definición de Menú
                 print(f"🔸 Menu: {objectValue0_}")
             case "7":
-                print(f"🔹 Component Interface (CI): {objectValue0_}")
+                # Definición de Componente
+                print(f"🔹 Component: {objectValue0_}")
             case "8":
-                print(f"📄 File Layout: {objectValue0_}")
+                # Definición de Record PeopleCode
+                print(f"📄 Record PeopleCode: {objectValue0_}")
             case "14":
                 print(f"📄 Message Catalog: {objectValue0_}" )                
             case "20":
+                # Definición de Proceso
                 self.processes.append(self._getProcessDefinition(objectValue0_, objectValue1_, rootNode_))
-                #print(f"📄 Process Definition: {objectValue0_} - {objectValue1_}")
             case "23":
+                # Definición de Job
                 print(f"📄 Job Definition: {objectValue0_}")                
             case "25":
-                print(f"📄 Role: {objectValue0_}")
+                # Definición de Catálogo de Mensajes
+                print(f"📄 Message Catalog:: {objectValue0_}")
             case "26":
                 print(f"📄 Process Definition: {objectValue0_}") 
             case "29":
                 print(f"📄 Application Package: {objectValue0_}")
             case "30":
-                print(f"📄 SQL Object: {objectValue0_}")
-                #print(f"📄 Application Class (PeopleCode): {objectValue0_}")
+                # Definición de Objeto SQL
+                match objectValue1_:
+                    case "0":
+                        self.sql_objects.append(self._getSQLDefinition(objectValue0_, objectValue1_, rootNode_))
+                    case "1":
+                        print(f"📄 Application Engine SQL: {objectValue0_}")
+                    case _:
+                        print(f"SQL no reconocido: {objectValue0_} con tipo {objectValue1_}")
+            case "31":
+                print(f"📄 File Layout: {objectValue0_}")                
             case "33":
                 print(f"📄 Application Engine Program: {objectValue0_}")                
             case "34":
@@ -309,8 +455,13 @@ class PSProject:
                 print(f"📄 Portal Registry Structure: {objectValue0_}")
             case "54":
                 print(f"📄 Activity Guide: {objectValue0_}")
-            case "58":
-                print(f"📄 Analytic Model: {objectValue0_}")
+            case "58":                
+                if objectValue3_ =="":
+                    #print(f"📄 Application Package PeopleCode: {objectValue0_}:{objectValue1_}:{objectValue2_}:{objectValue3_}")
+                    print ("no")
+                elif objectValue3_ != "":
+                    print(f"📄 Application Package PeopleCode: {objectValue0_}:{objectValue1_}:{objectValue2_}:{objectValue3_}")
+                    self.ap_peoplecode.append(self._getAppPackagePeopleCodeDefinition(objectValue0_, objectValue1_, objectValue2_, objectValue3_, rootNode_))
             case "66":
                 print(f"📄 Style Sheet: {objectValue0_}")
             case "104":
@@ -367,9 +518,11 @@ def getProject(xml_path: str)  -> PSProject  | None:
                             objectValue2 = row.findtext("szObjectValue_2", default="").strip()
                             objectValue3 = row.findtext("szObjectValue_3", default="").strip()
 
+                            print(f"Procesando item: ObjectType={objectTypeNode}, ObjectValue0={objectValue0}, ObjectValue1={objectValue1}, ObjectValue2={objectValue2}, ObjectValue3={objectValue3}")
+
                             projectObj._describeItems(objectTypeNode, objectValue0, objectValue1, objectValue2, objectValue3, root)
 
-                return projectObj
+                    return projectObj
 
             if projectNameStr is None or not projectNameStr.text:
                 print("⚠️  No se encontró nombre del proyecto en el XML.")
