@@ -29,6 +29,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 import re
+from docxtpl import RichText
 
 if TYPE_CHECKING:
     from ps_project_parser import PSProject
@@ -98,7 +99,7 @@ def printToConsole(projectObj_: PSProject):
 # Construcción del contexto Jinja2
 # ---------------------------------------------------------------------------
 
-def build_context(project: "PSProject") -> dict:
+def build_context(project: "PSProject", output_format: str) -> dict:
     """
     Convierte el objeto PSProject en un diccionario plano apto para Jinja2.
     Todas las listas y objetos se serializan como dicts para que la plantilla
@@ -116,13 +117,13 @@ def build_context(project: "PSProject") -> dict:
 
     def rf_to_dict(rf):
         flags = []
-        if rf.is_key:            flags.append("Key")
-        if rf.is_duplicate_key:  flags.append("Duplicate Key")
-        if rf.is_alternate_key:  flags.append("Alternate Key")
-        if rf.is_search_key:     flags.append("Search Key")
-        if rf.is_list_box:       flags.append("List Box")
-        if rf.is_from_search:    flags.append("From Search")
-        if rf.is_required:       flags.append("Required")
+        if rf.is_key == True:            flags.append("Key")
+        if rf.is_duplicate_key == True:  flags.append("Duplicate Key")
+        if rf.is_alternate_key == True:  flags.append("Alternate Key")
+        if rf.is_search_key == True:     flags.append("Search Key")
+        if rf.is_list_box == True:       flags.append("List Box")
+        if rf.is_from_search == True:    flags.append("From Search")
+        if rf.is_required == True:       flags.append("Required")
         return {
             "name": rf.name,
             "field_type": rf.field_type,
@@ -135,13 +136,82 @@ def build_context(project: "PSProject") -> dict:
             # "has_xlat": bool(rf.translate_values),
         }
 
+    """ 
+    def pc_to_dict(pc):
+        return {
+            "record_name": pc.record_name,
+            "field_name": pc.field_name,
+            "event_type": pc.event_type,
+            "full_name": f"{pc.record_name}.{pc.field_name}.{pc.event_type}" if pc.field_name
+                         else f"{pc.record_name}.{pc.event_type}",
+            "source_code": pc.source_code,
+            #"functions": pc.functions,
+            #"has_functions": bool(pc.functions),
+        }
+
     def appPackage_pc_to_dict(pc):
         return {
             "app_package": pc.app_package,
             "code_type": pc.code_type,
             "event": pc.event,
             "source_code": pc.source_code,
-        }
+        }    
+    """
+    def pc_to_dict(pc, outStr: str):
+
+        match outStr:
+            case "md":
+                return {
+                    "record_name": pc.record_name,
+                    "field_name": pc.field_name,
+                    "event_type": pc.event_type,
+                    "full_name": f"{pc.record_name}.{pc.field_name}.{pc.event_type}" if pc.field_name
+                            else f"{pc.record_name}.{pc.event_type}",
+                    "source_code": pc.source_code,
+                    #"functions": pc.functions,
+                    #"has_functions": bool(pc.functions),
+                }
+            case "docx":
+                # Convertir source_code a RichText para manejar saltos de línea
+                rt = RichText()
+                lines = (pc.source_code or "").split("\n")
+                for i, line in enumerate(lines):
+                    rt.add(line, font="Courier New", size=18, color="#595959")
+                    if i < len(lines) - 1:
+                        rt.add("\a")   # \a = salto de línea en docxtpl (w:br)
+                return {
+                    "record_name":  pc.record_name,
+                    "field_name":   pc.field_name,
+                    "event_type":   pc.event_type,
+                    "full_name":    f"{pc.record_name}.{pc.field_name}.{pc.event_type}" if pc.field_name
+                                    else f"{pc.record_name}.{pc.event_type}",
+                    "source_code":  rt,
+                }
+
+    def appPackage_pc_to_dict(pc, output: str):
+
+        match output:
+            case "md":
+                return {
+                    "app_package": pc.app_package,
+                    "code_type": pc.code_type,
+                    "event": pc.event,
+                    "source_code": pc.source_code,
+                }   
+            case "docx":
+                rt = RichText()
+                lines = (pc.source_code or "").split("\n")
+                for i, line in enumerate(lines):
+                    rt.add(line, font="Courier New", size=18, color="#595959")
+                    if i < len(lines) - 1:
+                        rt.add("\a")
+                return {
+                    "app_package":  pc.app_package,
+                    "code_type":    pc.code_type,
+                    "event":        pc.event,
+                    "source_code":  rt,
+                }    
+
 
     def ae_step_to_dict(step):
         return {
@@ -208,24 +278,25 @@ def build_context(project: "PSProject") -> dict:
         for s in project.sql_objects
     ]
 
+
     # --- Pages ---
     pages = [
         {
             "name": p.name,
             "page_type": p.page_type,
-            "description": p.description or ""
-            """
-            "controls": [
-                {
-                    "control_type": c.control_type,
-                    "record_name": c.record_name or "",
-                    "field_name": c.field_name or "",
-                    "label": c.label or "",
-                }
-                for c in p.controls
-            ],
-            "control_count": len(p.controls),
-            """
+            "description": p.description or "",
+            #
+            #"controls": [
+            #    {
+            #        "control_type": c.control_type,
+            #        "record_name": c.record_name or "",
+            #        "field_name": c.field_name or "",
+            #        "label": c.label or "",
+            #    }
+            #    for c in p.controls
+            #]
+            #"control_count": len(p.controls),
+
         }
         for p in project.pages
     ]
@@ -241,11 +312,25 @@ def build_context(project: "PSProject") -> dict:
         for p in project.processes
     ]
 
+
+    # --- PeopleCode (agrupado por record) ---
+    pc_by_record: dict[str, list] = {}
+    for pc in project.peoplecode:
+        # debug print (f"{pc.record_name}.{pc.field_name}.{pc.event_type}")
+        key = pc.record_name
+        pc_by_record.setdefault(key, []).append(pc_to_dict(pc, output_format))
+        
+    peoplecode_groups = [
+        {"record_name": rec, "events": evts}            
+        for rec, evts in sorted(pc_by_record.items())
+    ]
+
+
     # --- Application Package PeopleCode (agrupado por App Package) ---
     pc_by_app_package: dict[str, list] = {}
     for pc in project.ap_peoplecode:
         key = pc.app_package
-        pc_by_app_package.setdefault(key, []).append(appPackage_pc_to_dict(pc))
+        pc_by_app_package.setdefault(key, []).append(appPackage_pc_to_dict(pc, output_format))
 
     ap_peoplecode_grp = [
         {"app_package": app_pkg, "events": evts}
@@ -260,10 +345,10 @@ def build_context(project: "PSProject") -> dict:
         "pages":             len(project.pages),
         "sql_objects":       len(sql_objects),             
         "processes":         len(processes),
+        "peoplecode_events": len(project.peoplecode),
         "ap_peoplecode":     len(ap_peoplecode_grp),
-        "sql_objects":       len(project.sql_objects),
         "total":             sum([
-            len(records), len(fields), len(processes), len(pages), len(ap_peoplecode_grp),len(sql_objects)]
+            len(records), len(fields),len(project.pages), len(sql_objects), len(processes),len(project.peoplecode),len(ap_peoplecode_grp) ]
         )
     }
 
@@ -280,7 +365,8 @@ def build_context(project: "PSProject") -> dict:
         "pages":              pages,
         "sql_objects":        sql_objects,
         "processes":          processes,
-        "ap_peoplecode":      ap_peoplecode_grp
+        "peoplecode_groups":  peoplecode_groups,
+        "ap_peoplecode_grp":      ap_peoplecode_grp
     }
 
 
@@ -339,6 +425,7 @@ class MarkdownGenerator:
             ("Pages",              "pages"),
             ("Components",         "components"),
             ("Menus",              "menus"),
+            ("PeopleCode Events",   "peoplecode_events"),
             ("App Package PeopleCode",  "ap_peoplecode"),
             ("SQL Objects",        "sql_objects"),
             ("App Engine Programs","app_engines"),
@@ -354,7 +441,8 @@ class MarkdownGenerator:
         ]:
             if s.get(key, 0) > 0:
                 a(f"| {label} | {s[key]} |")
-        #a(f"| **TOTAL** | **{s['total']}** |")
+        
+        a(f"| **TOTAL** | **{s['total']}** |")
         a("")
 
         # Records
@@ -420,7 +508,7 @@ class MarkdownGenerator:
                     a("")                    
                 """
 
-       # Pages
+        # Pages
         if ctx["has"]["pages"]:
             a("---")
             a("## Pages")
@@ -460,12 +548,32 @@ class MarkdownGenerator:
                 a("```")
                 a("")
 
+
         # PeopleCode
-        if ctx["has"]["ap_peoplecode"]:
+        if ctx["peoplecode_groups"]:
             a("---")
-            a("## PeopleCode")
+            a("## Record PeopleCode")
             a("")
-            for group in ctx["ap_peoplecode"]:
+            for group in ctx["peoplecode_groups"]:
+                a(f"### Record: {group['record_name']}")
+                a("")
+                for evt in group["events"]:
+                    a(f"#### {evt['full_name']}")
+                    a("")
+                    #if evt["has_functions"]:
+                    #    a(f"**Funciones definidas:** {', '.join(evt['functions'])}  ")
+                    #    a("")
+                    a("```peoplecode")
+                    a(evt["source_code"])
+                    a("```")
+                    a("")
+
+        # App Package PeopleCode
+        if ctx["ap_peoplecode_grp"]:
+            a("---")
+            a("## App Package PeopleCode")
+            a("")
+            for group in ctx["ap_peoplecode_grp"]:
                 a(f"### Application Package: {group['app_package']}")
                 a("")
                 for evt in group["events"]:
@@ -497,10 +605,10 @@ class MarkdownGenerator:
 
 class DocGenerator:
 
-    def __init__(self, project: "PSProject", template_path: str = None):
+    def __init__(self, project: "PSProject", output_format: str, template_path: str = None):
         self.project = project
         self.template_path = template_path
-        self.context = build_context(project)
+        self.context = build_context(project, output_format)
 
     def to_docx(self, output_path: str):
         if not self.template_path:

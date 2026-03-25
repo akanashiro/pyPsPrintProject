@@ -27,16 +27,16 @@ def main():
     Ejemplos: 
     python main.py MiProyecto.xml --format md --output docs/MiProyecto.md
     python main.py MiProyecto.xml --format docx --template plantilla.docx
-    python main.py MiProyecto.xml --format both --template plantilla.docx --output docs/MiProyecto""")
+    """)
 
     parserObj.add_argument("xml_path",
         help="Ruta al archivo XML exportado desde Application Designer")
     parserObj.add_argument("--format", "-f",
-        choices=["docx", "md", "both"],
+        choices=["docx", "md"],
         default="md",
-        help="Formato de salida: docx, md, o ambos (default: md)")
+        help="Formato de salida: docx o md (default: md)")
     parserObj.add_argument("--template", "-t",
-        help="Ruta a la plantilla .docx con marcadores Jinja2 (requerido para --formato docx/ambos)")
+        help="Ruta a la plantilla .docx con marcadores Jinja2 (requerido para --formato docx)")
     parserObj.add_argument("--output", "-o",
         help="Ruta de salida sin extensión (se agrega automáticamente) o con extensión si es un formato único")
 
@@ -48,11 +48,11 @@ def main():
         print(f"❌ Error: No se encontró el archivo: {xml_path}", file=sys.stderr)
         sys.exit(1)
 
-    if args.format in ("docx", "both") and not args.template:
+    if args.format in ("docx") and not args.template:
         print("❌ Error: --plantilla es requerido para generar DOCX.", file=sys.stderr)
         sys.exit(1)
 
-    if args.template and not Path(args.plantilla).exists():
+    if args.template and not Path(args.template).exists():
         print(f"❌ Error: No se encontró la plantilla: {args.plantilla}", file=sys.stderr)
         sys.exit(1)
 
@@ -72,15 +72,15 @@ def main():
 
     # Generación
     
-    gen = DocGenerator(projectObj, template_path=args.template)
+    gen = DocGenerator(projectObj, output_format = args.format, template_path=args.template)
 
-    if args.format in ("md", "both"):
+    if args.format in ("md"):
         md_path = salida_base if salida_base.endswith(".md") else f"{salida_base}.md"
         gen.to_markdown(md_path)
 
-    #if args.format in ("docx", "both"):
-    #    docx_path = salida_base if salida_base.endswith(".docx") else f"{salida_base}.docx"
-    #    gen.to_docx(docx_path)
+    if args.format in ("docx"):
+        docx_path = salida_base if salida_base.endswith(".docx") else f"{salida_base}.docx"
+        gen.to_docx(docx_path)
     
 
 if __name__ == "__main__":

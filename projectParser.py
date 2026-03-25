@@ -44,6 +44,7 @@ class RecordField:
     is_from_search: bool = False
     is_required: bool = False
     is_audit: bool = False
+    is_regular: bool = False
     default_value: Optional[str] = None
     label: Optional[str] = None
    # translate_values: list[TranslateValue] = field(default_factory=list)
@@ -86,6 +87,16 @@ class PageControl:
     label: Optional[str] = None
     occurrence: Optional[int] = None
 
+@dataclass
+class PeopleCodeEvent:
+    record_name: str
+    field_name: str
+    event_type: str           # FieldDefault, FieldFormula, RowInit, RowInsert, RowDelete,
+                              # SavePreChange, SavePostChange, FieldEdit, FieldChange,
+                              # PrePopup, Activate, ItemSelected, etc.
+    source_code: str = ""
+    # functions: list[str] = field(default_factory=list)
+
 
 @dataclass
 class PageDefinition:
@@ -95,7 +106,7 @@ class PageDefinition:
     description: Optional[str] = None
 
 @dataclass
-class AppPackagePCDefinition:
+class AppPackagePCode:
     app_package: str = ""
     code_type: str  ="Application Package PeopleCode"  
     event: str =""          
@@ -133,7 +144,8 @@ class PSProject:
     sql_objects: list[SQLDefinition] = field(default_factory=list)
     pages: list[PageDefinition] = field(default_factory=list)    
     processes: list[ProcessDefinition] = field(default_factory=list)
-    ap_peoplecode: list[AppPackagePCDefinition] = field(default_factory=list)    
+    peoplecode: list[PeopleCodeEvent] = field(default_factory=list)    
+    ap_peoplecode: list[AppPackagePCode] = field(default_factory=list)    
     """    
     components: list[ComponentDefinition] = field(default_factory=list)
     menus: list[MenuDefinition] = field(default_factory=list)
@@ -150,7 +162,7 @@ class PSProject:
     """
 
 
-    def _getRecFieldDefinition(self, recordNameStr_: str, row_) -> list[RecordField] | None:
+    def _getRecFieldDefinition(self, recordNameStr_: str, row_) -> list[RecordField]:
         recFieldNode = row_.find(".//rowset[@name='RecField']")
         
         fieldObjs = []
@@ -161,22 +173,69 @@ class PSProject:
                 eFieldTypeStr = fieldRow.findtext("eFieldType", default="").strip()
                 nLengthStr = fieldRow.findtext("nLength", default="").strip()
                 nDecimalPosStr = fieldRow.findtext("nDecimalPos", default="").strip()
+                fUseEditNbr = int(fieldRow.findtext("fUseEdit", default="0").strip())
+                decodeResultArray = helpers.decodeFieldFlags(fUseEditNbr)
 
-                fieldTypeDescrStr = helpers.getFieldTypeDescription(eFieldTypeStr)
+                # Output esperado:
+                # Valor:       8390657
+                # Bits:        [1, 2048, 8388608]
+                # Descripción: Key Value + Search key + Regular field (sub-record)
+
+                isKeyBool = False
+                isDuplicateBool = False
+                isAuditBool = False
+                isAlternateBool = False
+                isLitBoxBool = False
+                isReqBool = False
+                isSearchKeyBool = False
+                isFromSrchBool = False
+
+                if 0 in decodeResultArray['bits']:
+                    isKeyBool = True
+
+                if 2 in decodeResultArray['bits']:
+                    isDuplicateBool = True
+
+                if 8 in decodeResultArray['bits']:
+                    isAuditBool = True
+                
+                if 16 in decodeResultArray['bits']:
+                    isAlternateBool = True
+
+                if 3 in decodeResultArray['bits']:
+                    isLitBoxBool = True
+
+                if 256 in decodeResultArray['bits']:
+                    isReqBool = True
+
+                if 2048 in decodeResultArray['bits']:
+                    isSearchKeyBool = True
+
+                if 262144 in decodeResultArray['bits']:
+                    isFromSrchBool = True
+
 
                 recordFieldObj = RecordField(
                     name = atmFieldNameStr,
                     field_type = eFieldTypeStr,
                     length = int(nLengthStr),
-                    decimals = int(nDecimalPosStr)
-                )
+                    decimals = int(nDecimalPosStr),
+                    is_key = isKeyBool,
+                    is_duplicate_key = isDuplicateBool,
+                    is_alternate_key = isAlternateBool,
+                    is_search_key = isSearchKeyBool,
+                    is_list_box = isLitBoxBool,
+                    is_required = isReqBool,
+                    is_from_search = isFromSrchBool,
+                    is_audit = isAuditBool,
+                ) 
+                            
+
                 fieldObjs.append(recordFieldObj)
-            
+
             return fieldObjs
 
-        return None
-
-    def _getRecordDefinition(self, recordNameStr_: str, rootNode_) -> RecordDefinition :
+    def _getRecordDefinition(self, recordNameStr_: str, rootNode_) -> RecordDefinition | None:
 
         for instance in rootNode_.iter("instance"):            
             if instance.get("class") == "RDM":         
@@ -207,9 +266,9 @@ class PSProject:
                                 parent_record=szParentRecNameStr
                             )
                             return recordObj
-        #return None
+        return None
 
-    def _getFieldDefinition(self, fieldNameStr_: str, rootNode_) -> FieldDefinition :
+    def _getFieldDefinition(self, fieldNameStr_: str, rootNode_) -> FieldDefinition | None:
 
         for instance in rootNode_.iter("instance"):            
             if instance.get("class") == "FIELD":         
@@ -238,9 +297,9 @@ class PSProject:
                             )
 
                             return fieldObj
-        # return None
+        return None
 
-    def _getProcessDefinition(self, processTypeStr_: str, processNameStr_: str, rootNode_) -> ProcessDefinition:
+    def _getProcessDefinition(self, processTypeStr_: str, processNameStr_: str, rootNode_) -> ProcessDefinition | None:
 
         for instance in rootNode_.iter("instance"):            
             if instance.get("class") == "PSD":         
@@ -262,9 +321,9 @@ class PSProject:
                             )
 
                             return procDefnObj
-        #return None
+        return None
 
-    def _getSQLDefinition(self, sqlNameStr_: str, objectValue1_: str, rootNode_) -> SQLDefinition :
+    def _getSQLDefinition(self, sqlNameStr_: str, objectValue1_: str, rootNode_) -> SQLDefinition | None:
         for instance in rootNode_.iter("instance"):            
             if instance.get("class") == "SRM":         
                 sqlNode = instance.find(".//rowset[@name='SrmDefn']")
@@ -274,7 +333,7 @@ class PSProject:
                         szSqlIdStr = sqlRow.findtext("szSqlId", default="").strip()
                         szSqlTypeStr = sqlRow.findtext("szSqlType", default="").strip()  
                         
-                        # print(f"Debug SQL: szSqlId={szSqlIdStr}, szSqlType={szSqlTypeStr}, objectValue1={objectValue1_}")
+                        # Degub print(f"Debug SQL: szSqlId={szSqlIdStr}, szSqlType={szSqlTypeStr}, objectValue1={objectValue1_}")
 
                         if szSqlIdStr == sqlNameStr_ and szSqlTypeStr == objectValue1_ and objectValue1_ == "0":
 
@@ -284,7 +343,7 @@ class PSProject:
                                 "/szDescr"
                             ).text
 
-                            print (f"Debug SQL: szDescr={szDescrStr}")
+                            # Debug print (f"Debug SQL: szDescr={szDescrStr}")
 
 
                             szSQLTextStr = sqlRow.find(
@@ -295,7 +354,7 @@ class PSProject:
                                 "/lpszSqlText"
                             ).text
 
-                            print (f"Debug SQL: szSQLText={szSQLTextStr}")
+                            # debug print (f"Debug SQL: szSQLText={szSQLTextStr}")
 
                             sqlDefnObj = SQLDefinition(
                                 name=szSqlIdStr,
@@ -305,9 +364,36 @@ class PSProject:
                             )
 
                             return sqlDefnObj
-        #return None
+        return None
 
-    def _getAppPackagePeopleCodeDefinition(self, packageNameStr_: str, objectValue1_: str, objectValue2_: str, objectValue3_: str, rootNode_) -> AppPackagePCDefinition :
+    def _getRecordPeopleCode(self, objectValue0_: str, objectValue1_: str, objectValue2_: str, rootNode_) -> PeopleCodeEvent | None:
+        for instance in rootNode_.iter("instance"):
+            if instance.get("class") == "PCM":
+                pcNode = instance.find(".//rowset[@name='PcmProg']")
+                if pcNode is not None:
+                    for pcRow in pcNode.findall("row"):
+                        szObjectValue_0Str = pcRow.findtext("szObjectValue_0", default="").strip() # Record
+                        szObjectValue_1Str = pcRow.findtext("szObjectValue_1", default="").strip() # Field
+                        szObjectValue_2Str = pcRow.findtext("szObjectValue_2", default="").strip() # Event
+                        
+
+                        if szObjectValue_0Str == objectValue0_ and szObjectValue_1Str == objectValue1_ and szObjectValue_2Str == objectValue2_ :
+
+                            peopleCodeText = instance.find(".//peoplecode_text")    
+
+                            pcEventObj = PeopleCodeEvent(
+                                    record_name = objectValue0_,
+                                    field_name = objectValue1_,
+                                    event_type =  objectValue2_,          # FieldDefault, FieldFormula, RowInit, RowInsert, RowDelete,
+                                                              # SavePreChange, SavePostChange, FieldEdit, FieldChange,
+                                                              # PrePopup, Activate, ItemSelected, etc.
+                                    source_code = peopleCodeText.text.strip()
+                            )
+                            
+                            return pcEventObj
+        return None
+
+    def _getAppPackagePeopleCode(self, packageNameStr_: str, objectValue1_: str, objectValue2_: str, objectValue3_: str, rootNode_) -> AppPackagePCode | None:
         for instance in rootNode_.iter("instance"):            
             if instance.get("class") == "PCM":         
                 pcNode = instance.find(".//rowset[@name='PcmProg']")
@@ -329,7 +415,7 @@ class PSProject:
                                 if objectValue3_ != " ":
                                     eventTypeStr=f"{packageNameStr_}:{objectValue1_}:{objectValue2_}:{objectValue3_}"
 
-                            pcEventObj = AppPackagePCDefinition(
+                            pcEventObj = AppPackagePCode(
                                 app_package=packageNameStr_,
                                 event=eventTypeStr,
                                 code_type="Application Package PeopleCode",
@@ -337,9 +423,9 @@ class PSProject:
                             )
 
                             return pcEventObj
-      #  return None
+        return None
 
-    def _getPageDefinition(self, pageNameStr_: str, rootNode_) -> PageDefinition :
+    def _getPageDefinition(self, pageNameStr_: str, rootNode_) -> PageDefinition | None:
         for instance in rootNode_.iter("instance"):            
             if instance.get("class") == "PDM":         
                 pageNode = instance.find(".//rowset[@name='PdmDefn']")
@@ -360,7 +446,7 @@ class PSProject:
                             )
 
                             return pageObj
-        #return None
+        return None
 
     def _describeItems(self, objectTypeNode_, objectValue0_, objectValue1_, objectValue2_, objectValue3_, rootNode_):
 
@@ -398,16 +484,22 @@ class PSProject:
 
         match objectTypeNode_:
             case "0":
-                # Definición de Record. Se debe obtener toda la información del record, incluyendo sus campos asociados.                
-                self.records.append(self._getRecordDefinition(objectValue0_, rootNode_))           
+                # Definición de Record. Se debe obtener toda la información del record, incluyendo sus campos asociados.
+                resultObj = self._getRecordDefinition(objectValue0_, rootNode_)
+                if resultObj is not None:
+                    self.records.append(resultObj)                
             case "2":
                 # Definición de Field.
-                self.fields.append(self._getFieldDefinition(objectValue0_, rootNode_)) 
+                resultObj = self._getFieldDefinition(objectValue0_, rootNode_)
+                if resultObj is not None:
+                    self.fields.append(resultObj)
             #case "4":
             #    print(f"📄 Page: {objectValue_}")
             case "5":
-                # Definición de Página                
-                self.pages.append(self._getPageDefinition(objectValue0_, rootNode_))
+                # Definición de Página   
+                resultObj = self._getPageDefinition(objectValue0_, rootNode_)       
+                if resultObj is not None:
+                    self.pages.append(resultObj)
             case "6":
                 # Definición de Menú
                 print(f"🔸 Menu: {objectValue0_}")
@@ -416,12 +508,16 @@ class PSProject:
                 print(f"🔹 Component: {objectValue0_}")
             case "8":
                 # Definición de Record PeopleCode
-                print(f"📄 Record PeopleCode: {objectValue0_}")
+                resultObj = self._getRecordPeopleCode(objectValue0_, objectValue1_, objectValue2_, rootNode_)
+                if resultObj is not None:
+                    self.peoplecode.append(resultObj)
             case "14":
                 print(f"📄 Message Catalog: {objectValue0_}" )                
             case "20":
                 # Definición de Proceso
-                self.processes.append(self._getProcessDefinition(objectValue0_, objectValue1_, rootNode_))
+                resultObj = self._getProcessDefinition(objectValue0_, objectValue1_, rootNode_)
+                if resultObj is not None:
+                    self.processes.append(resultObj)
             case "23":
                 # Definición de Job
                 print(f"📄 Job Definition: {objectValue0_}")                
@@ -436,7 +532,9 @@ class PSProject:
                 # Definición de Objeto SQL
                 match objectValue1_:
                     case "0":
-                        self.sql_objects.append(self._getSQLDefinition(objectValue0_, objectValue1_, rootNode_))
+                        resultObj = self._getSQLDefinition(objectValue0_, objectValue1_, rootNode_)
+                        if resultObj is not None:
+                            self.sql_objects.append(resultObj)
                     case "1":
                         print(f"📄 Application Engine SQL: {objectValue0_}")
                     case _:
@@ -458,10 +556,11 @@ class PSProject:
             case "58":                
                 if objectValue3_ =="":
                     #print(f"📄 Application Package PeopleCode: {objectValue0_}:{objectValue1_}:{objectValue2_}:{objectValue3_}")
-                    print ("no")
+                    print ("pendiente escribir código")
                 elif objectValue3_ != "":
-                    print(f"📄 Application Package PeopleCode: {objectValue0_}:{objectValue1_}:{objectValue2_}:{objectValue3_}")
-                    self.ap_peoplecode.append(self._getAppPackagePeopleCodeDefinition(objectValue0_, objectValue1_, objectValue2_, objectValue3_, rootNode_))
+                    resultObj = self._getAppPackagePeopleCode(objectValue0_, objectValue1_, objectValue2_, objectValue3_, rootNode_)
+                    if resultObj is not None:
+                        self.ap_peoplecode.append(resultObj)
             case "66":
                 print(f"📄 Style Sheet: {objectValue0_}")
             case "104":
@@ -518,7 +617,7 @@ def getProject(xml_path: str)  -> PSProject  | None:
                             objectValue2 = row.findtext("szObjectValue_2", default="").strip()
                             objectValue3 = row.findtext("szObjectValue_3", default="").strip()
 
-                            print(f"Procesando item: ObjectType={objectTypeNode}, ObjectValue0={objectValue0}, ObjectValue1={objectValue1}, ObjectValue2={objectValue2}, ObjectValue3={objectValue3}")
+                            # Debug print(f"Procesando item: ObjectType={objectTypeNode}, ObjectValue0={objectValue0}, ObjectValue1={objectValue1}, ObjectValue2={objectValue2}, ObjectValue3={objectValue3}")
 
                             projectObj._describeItems(objectTypeNode, objectValue0, objectValue1, objectValue2, objectValue3, root)
 

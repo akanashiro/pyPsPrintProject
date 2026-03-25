@@ -9,6 +9,7 @@ Las definiciones guardadas en el objeto son:
 * Pages
 * Processes
 * SQL objects
+* Record PeopleCode
 * Application Package PeopleCode
 
 To-do:
@@ -17,7 +18,10 @@ To-do:
 
 La sintaxis de ejecución
 ```
-    python main.py MiProyecto.xml --format md --output MiProyecto.md
+    python main.py MiProyecto.xml --format md [--output MiProyecto.md]
+    python main.py MiProyecto.xml -f md [-o MiProyecto.md]
+    python main.py MiProyecto.xml --format docx --template plantilla.docx [--output MiProyecto.docx]
+    python main.py MiProyecto.xml --ft docx -t plantilla.docx [-o MiProyecto.docx]
 ```
 
 **Nota:**
