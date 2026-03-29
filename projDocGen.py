@@ -16,7 +16,7 @@ projDocGen.py
 Genera documentación de un proyecto PeopleSoft en formato DOCX (via
 python-docx-template con Jinja2) o Markdown.
 
-Requisitos:
+Requisites:
     pip install docxtpl python-docx
 
 Uso:
@@ -215,20 +215,49 @@ def build_context(project: "PSProject", output_format: str) -> dict:
                     "code_type":    pc.code_type,
                     "event":        pc.event,
                     "source_code":  rt,
-                }    
+                } 
 
+    def convertPc(pc: str, output: str) -> str:
+
+        match output:
+            case "md":
+                return pc.source_code
+            case "docx":
+                rt = RichText()
+                lines = pc.split("\n")
+                for i, line in enumerate(lines):
+                    rt.add(line, font="Courier New", size=18, color="#595959")
+                    if i < len(lines) - 1:
+                        rt.add("\a")
+                return  rt
+
+
+    def ae_step_actions(action):
+        #print(f"Action type: {action.action_type}")
+        #print(f"PeopleCode: {action.peoplecode}")
+        # print(f"call: {action.call}")
+        return {
+            "action_type": action.action_type or "",
+            "peoplecode":  convertPc(action.peoplecode.source_code, output_format) if action.peoplecode else None,
+            "sql": action.sql.sql_text if action.sql else None,
+            "call": action.call or "prueba"
+        }
 
     def ae_step_to_dict(step):
+        # print(f"Step name: {step.step_name}")
         return {
-            "step_name": step.get("step_name", ""),
-            "actions": step.get("actions", []),
+            "step_name": step.step_name, #step.get("step_name", "")
+            "step_actions": [ae_step_actions(a) for a in step.step_actions],
         }
 
     def ae_section_to_dict(sect):
+        # debug print(f"tiene steps {bool(sect.steps)}")
         return {
             "section_name": sect.section_name,
-            "section_type": sect.section_type,
+            "program_name": sect.program_name,
+            #"section_type": sect.section_type,
             "steps": [ae_step_to_dict(s) for s in sect.steps],
+            #"steps": sect.steps,
             "has_steps": bool(sect.steps),
         }
 
@@ -306,13 +335,28 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         for p in project.pages
     ]
 
-    def ae_section_to_dict(sect):
-        return {
-            "section_name": sect.section_name,
-            "section_type": sect.section_type,
-            "steps": [ae_step_to_dict(s) for s in sect.steps],
-            "has_steps": bool(sect.steps),
+    # --- File Layouts ---
+    file_layouts = [
+        {
+            "name": fl.name,
+            "file_type": fl.file_type,
+            "description": fl.description or "",
+            "delimiter": fl.delimiter or "",
+            "records": fl.records,
         }
+        for fl in project.file_layouts
+    ]
+
+    # --- Menus ---
+    menus = [
+        {
+            "name": m.name,
+            #"menu_type": m.menu_type,
+            "description": m.description or "",
+            #"menu_items": m.menu_items,
+        }
+        for m in project.menus
+    ]
 
     # --- App Engine ---
     app_engines = [
@@ -322,8 +366,8 @@ def build_context(project: "PSProject", output_format: str) -> dict:
             "description": ae.description or "",
             "disRestart": ae.disRestart,
             "aetRecords": ae.aetRecords,
-            #"sections": [ae_section_to_dict(s) for s in ae.sections],
-            "sections": ae.sections,
+            "sections": [ae_section_to_dict(s) for s in ae.sections],
+            #"sections": ae.sections,
             "section_count": len(ae.sections),
             #"peoplecode": [pc_to_dict(p) for p in ae.peoplecode],
             #"has_peoplecode": bool(ae.peoplecode),
@@ -442,6 +486,7 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         "fields":            len(fields),   
         "pages":             len(project.pages),
         "sql_objects":       len(sql_objects),             
+        "menus":             len(menus),        
         "processes":         len(processes),
         "jobs":              len(jobs),
         "peoplecode_events": len(project.peoplecode),
@@ -449,9 +494,10 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         "app_engines":       len(app_engines),
         "service_operations":len(service_operations),
         "msg_catalog":       len(msg_catalog),
+        "file_layouts":      len(file_layouts),        
         "total":             sum([
             len(records), len(fields),len(project.pages), len(sql_objects), len(processes), len(jobs), len(project.peoplecode), len(ap_peoplecode_grp), \
-            len(service_operations), len(app_engines), len(msg_catalog) ]
+            len(service_operations), len(app_engines), len(msg_catalog), len(file_layouts), len(menus)]
         )
     }
 
@@ -467,6 +513,7 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         "fields":             fields,
         "pages":              pages,
         "sql_objects":        sql_objects,
+        "menus":              menus,
         "processes":          processes,
         "app_engines":        app_engines,
         "jobs":               jobs,
@@ -475,7 +522,8 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         "pc_crf_groups":      pc_crf_groups,
         "ap_peoplecode_grp":  ap_peoplecode_grp,
         "service_operations": service_operations,
-        "msg_catalog":        msg_catalog
+        "msg_catalog":        msg_catalog,
+        "file_layouts":       file_layouts        
     }
 
 

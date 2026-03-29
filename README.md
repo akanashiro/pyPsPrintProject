@@ -3,40 +3,61 @@
 This application helps you to document those PeopleSoft projects exported to a file with Application Designer.
 It extracts the definitions found in XML file and loaded them into classes so they can be browsed and dump them into a text file (.md or .docx)
 
-Definitions that work:
+## Definitions that work
 * Record Definition
 * Field Definition
 * Page Definition
 * Process Definition
+* Job Definition
 * SQL Object
 * Record PeopleCode
 * Component PeopleCode
 * Component Record Field PeopleCode
 * Application Package PeopleCode
 * Application Engine basic information
+  * Application Engine PeopleCode
+  * Application Engine SQL
+    * Do Select
+    * Do When
+  * Call Section
 * Message Catalog
+* File Layout
 
-To-do:
+## What partially works
+* Only REST Service Operation
+* Menu doesn't show BarItem + BarPanel yet
+
+## To-do
 * Components
+* Component PeopleCode
+* Translate values
 * File Layouts
 * Application Engine:
-  * SQL
-  * PeopleCode
+  * Other SQL events
   * Temporary Table list
 * Remaining definitions found in the XML file
 * Message Catalog long explanation
-* Menu
 * Roles
 * Permission Lists
 * Content Reference
 * Application Package
 * Index
+* File Layout: I couldn't figure out which tag is the output file format. Maybe "eFormat"?
 
-Won't:
+## Won't work
 * PeopleCode Menu
-* Other objects that are not so common like CSS styles or icons
+* Other objects like CSS styles or icons
 
-First Step:
+## Warning!!!
+
+### First Steps
+
+You must install som extra packages
+
+```
+pip install docxtpl python-docx
+```
+
 PeopleSoft XML doesn't come with root tag (don't know why), so you will see something like this.
 ```XML
 <?xml version='1.0'?>
@@ -58,7 +79,11 @@ You must open the XML file and add <root> tag before <instance> and the end of t
 </root>
 ```
 
-How to run:
+### Application could break in certain scenarios:
+There are some projects that could crash the applications like those with object definitions but the object is empty.
+
+
+## How to run:
 ```
     >> python main.py MyProject.xml --format md [--output MyProject.md]
     >> python main.py MyProject.xml -f md [-o MyProject.md]

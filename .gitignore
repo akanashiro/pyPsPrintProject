@@ -1,5 +1,6 @@
 claude/
 project/
 __pycache__/
-*.md
-*.docx
+/*.md
+/*.docx
+/*.doc
