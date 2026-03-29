@@ -1,11 +1,12 @@
 # ============================================================================
-# Proyecto:        pyPSPrintProject
-# Descripción:     Print Project de proyecto de proyecto exportado a XML
+# Project:          pyPSPrintProject
+# Description:      Print Project de proyecto de proyecto exportado a XML
 # Nombre Archivo:  projDocGen.py
-# Autor:           akanashiro@gmail.com
-# Historial de Modificaciones:
-# Fecha            Autor        Ref.     Descripción
-# 2026/03/22       AKF          #001     CLI para generación de documento
+# Author:           akanashiro@gmail.com
+# License:          MIT - read LICENSE in repo
+# Changelog:
+# Date             Author       Ref.     Description
+# 2026/03/22       AKF          #001     Document render engine.
 # ============================================================================
 
 
@@ -162,12 +163,14 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         match outStr:
             case "md":
                 return {
-                    "record_name": pc.record_name,
-                    "field_name": pc.field_name,
-                    "event_type": pc.event_type,
-                    "full_name": f"{pc.record_name}.{pc.field_name}.{pc.event_type}" if pc.field_name
-                            else f"{pc.record_name}.{pc.event_type}",
-                    "source_code": pc.source_code,
+                    "component":    pc.component,
+                    "market":       pc.market,                    
+                    "record_name":  pc.record_name,
+                    "field_name":   pc.field_name,
+                    "event_type":   pc.event_type,
+                    "full_name": f"{pc.record_name}.{pc.field_name}.{pc.event_type}" if pc.field_name else f"{pc.record_name}.{pc.event_type}",
+                    "code_type":    pc.code_type,
+                    "source_code": pc.source_code
                     #"functions": pc.functions,
                     #"has_functions": bool(pc.functions),
                 }
@@ -180,11 +183,13 @@ def build_context(project: "PSProject", output_format: str) -> dict:
                     if i < len(lines) - 1:
                         rt.add("\a")   # \a = salto de línea en docxtpl (w:br)
                 return {
+                    "component":    pc.component,
+                    "market":       pc.market,                    
                     "record_name":  pc.record_name,
                     "field_name":   pc.field_name,
                     "event_type":   pc.event_type,
-                    "full_name":    f"{pc.record_name}.{pc.field_name}.{pc.event_type}" if pc.field_name
-                                    else f"{pc.record_name}.{pc.event_type}",
+                    "full_name":    f"{pc.record_name}.{pc.field_name}.{pc.event_type}" if pc.field_name else f"{pc.record_name}.{pc.event_type}",
+                    "code_type":    pc.code_type,
                     "source_code":  rt,
                 }
 
@@ -301,6 +306,31 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         for p in project.pages
     ]
 
+    def ae_section_to_dict(sect):
+        return {
+            "section_name": sect.section_name,
+            "section_type": sect.section_type,
+            "steps": [ae_step_to_dict(s) for s in sect.steps],
+            "has_steps": bool(sect.steps),
+        }
+
+    # --- App Engine ---
+    app_engines = [
+        {
+            "name": ae.name,
+            "aeType": ae.aeType,
+            "description": ae.description or "",
+            "disRestart": ae.disRestart,
+            "aetRecords": ae.aetRecords,
+            #"sections": [ae_section_to_dict(s) for s in ae.sections],
+            "sections": ae.sections,
+            "section_count": len(ae.sections),
+            #"peoplecode": [pc_to_dict(p) for p in ae.peoplecode],
+            #"has_peoplecode": bool(ae.peoplecode),
+        }
+        for ae in project.app_engines
+    ]    
+
     # --- Processes ---
     processes = [
         {
@@ -308,22 +338,64 @@ def build_context(project: "PSProject", output_format: str) -> dict:
             "process_type": p.process_type,
             "description": p.description or "",
             "run_location": p.run_location or "",
+            "parameters": p.parameters or "",
+            "components": p.components or [],
+            "procGroups": p.procGroups or []
         }
         for p in project.processes
     ]
 
+    # --- Jobs ---
+    jobs = [
+        {
+            "jobName": p.jobName,
+            "jobDescr": p.jobDescr,
+            "processList": p.processList
+        }
+        for p in project.jobs
+    ]
 
     # --- PeopleCode (agrupado por record) ---
     pc_by_record: dict[str, list] = {}
     for pc in project.peoplecode:
         # debug print (f"{pc.record_name}.{pc.field_name}.{pc.event_type}")
         key = pc.record_name
-        pc_by_record.setdefault(key, []).append(pc_to_dict(pc, output_format))
+        
+        if pc.code_type == "Record":
+            pc_by_record.setdefault(key, []).append(pc_to_dict(pc, output_format))
         
     peoplecode_groups = [
         {"record_name": rec, "events": evts}            
         for rec, evts in sorted(pc_by_record.items())
     ]
+
+    # --- PeopleCode (agrupado por componente) ---
+    
+    pc_by_comp: dict[str, list] = {}
+    for pc in project.peoplecode:
+        # debug print (f"{pc.record_name}.{pc.field_name}.{pc.event_type}")
+        key = pc.component
+
+        if pc.code_type == "Component":
+            pc_by_comp.setdefault(key, []).append(pc_to_dict(pc, output_format))
+        
+    pc_comp_groups = [
+        {"component": comp, "events": evts}            
+        for comp, evts in sorted(pc_by_comp.items())
+    ]    
+
+    pc_by_crf: dict[str, list] = {}
+    for pc in project.peoplecode:
+        # debug print (f"{pc.record_name}.{pc.field_name}.{pc.event_type}")
+        key = pc.component
+
+        if pc.code_type == "Component Record Field":
+            pc_by_crf.setdefault(key, []).append(pc_to_dict(pc, output_format))
+        
+    pc_crf_groups = [
+        {"component": comp, "events": evts}            
+        for comp, evts in sorted(pc_by_crf.items())
+    ]    
 
 
     # --- Application Package PeopleCode (agrupado por App Package) ---
@@ -338,6 +410,32 @@ def build_context(project: "PSProject", output_format: str) -> dict:
     ]    
 
 
+    # Service Operation
+    service_operations = [
+        {
+            "name": p.name,
+            "restMethod": p.restMethod,
+            "description": p.description,
+            "comments": p.comments,
+            "restBaseUrl": p.restBaseUrl,
+            "uriTemplates": p.uriTemplates
+        }
+        for p in project.service_operations
+    ]
+
+    # --- Message Catalog ---
+    msg_catalog = [
+        {
+            "message_set": m.message_set,
+            "message_number": m.message_number,
+            "severity": m.severity,
+            "message_text": m.message_text,
+            "explanation": m.explanation or "",
+        }
+        for m in sorted(project.msg_catalog, key=lambda x: (x.message_set, x.message_number))
+    ]    
+
+
     # --- Resumen / Stats ---
     summary = {
         "records":           len(records),
@@ -345,10 +443,15 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         "pages":             len(project.pages),
         "sql_objects":       len(sql_objects),             
         "processes":         len(processes),
+        "jobs":              len(jobs),
         "peoplecode_events": len(project.peoplecode),
         "ap_peoplecode":     len(ap_peoplecode_grp),
+        "app_engines":       len(app_engines),
+        "service_operations":len(service_operations),
+        "msg_catalog":       len(msg_catalog),
         "total":             sum([
-            len(records), len(fields),len(project.pages), len(sql_objects), len(processes),len(project.peoplecode),len(ap_peoplecode_grp) ]
+            len(records), len(fields),len(project.pages), len(sql_objects), len(processes), len(jobs), len(project.peoplecode), len(ap_peoplecode_grp), \
+            len(service_operations), len(app_engines), len(msg_catalog) ]
         )
     }
 
@@ -365,8 +468,14 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         "pages":              pages,
         "sql_objects":        sql_objects,
         "processes":          processes,
+        "app_engines":        app_engines,
+        "jobs":               jobs,
         "peoplecode_groups":  peoplecode_groups,
-        "ap_peoplecode_grp":      ap_peoplecode_grp
+        "pc_comp_groups":     pc_comp_groups,
+        "pc_crf_groups":      pc_crf_groups,
+        "ap_peoplecode_grp":  ap_peoplecode_grp,
+        "service_operations": service_operations,
+        "msg_catalog":        msg_catalog
     }
 
 
@@ -380,7 +489,7 @@ class DocxGenerator:
         try:
             from docxtpl import DocxTemplate
         except ImportError:
-            raise ImportError("Instalá python-docx-template: pip install docxtpl")
+            raise ImportError("Install python-docx-template: pip install docxtpl")
 
         self.DocxTemplate = DocxTemplate
         self.template_path = template_path
@@ -432,6 +541,7 @@ class MarkdownGenerator:
             ("App Packages",       "app_packages"),
             ("Messages",           "messages"),
             ("Process Definitions","processes"),
+            ("Job Definitions",     "jobs"),
             ("Service Operations", "service_operations"),
             ("Queries",            "queries"),
             ("Style Sheets",       "style_sheets"),
@@ -549,7 +659,7 @@ class MarkdownGenerator:
                 a("")
 
 
-        # PeopleCode
+        # Record PeopleCode
         if ctx["peoplecode_groups"]:
             a("---")
             a("## Record PeopleCode")
@@ -567,6 +677,46 @@ class MarkdownGenerator:
                     a(evt["source_code"])
                     a("```")
                     a("")
+
+        # Component PeopleCode
+        if ctx["pc_comp_groups"]:
+            a("---")
+            a("## Record PeopleCode")
+            a("")
+            for group in ctx["pc_comp_groups"]:
+                a(f"### Component: {group['component']}")
+                a("")
+                for evt in group["events"]:
+                    a(f"#### {evt['full_name']}")
+                    a(f"#### {evt['market']}")
+                    a("")
+                    #if evt["has_functions"]:
+                    #    a(f"**Funciones definidas:** {', '.join(evt['functions'])}  ")
+                    #    a("")
+                    a("```peoplecode")
+                    a(evt["source_code"])
+                    a("```")
+                    a("")
+
+        # Component Record Field PeopleCode
+        if ctx["pc_crf_groups"]:
+            a("---")
+            a("## Record PeopleCode")
+            a("")
+            for group in ctx["pc_crf_groups"]:
+                a(f"### Component: {group['component']}")
+                a("")
+                for evt in group["events"]:
+                    a(f"#### {evt['full_name']}")
+                    a("")
+                    #if evt["has_functions"]:
+                    #    a(f"**Funciones definidas:** {', '.join(evt['functions'])}  ")
+                    #    a("")
+                    a("```peoplecode")
+                    a(evt["source_code"])
+                    a("```")
+                    a("")
+
 
         # App Package PeopleCode
         if ctx["ap_peoplecode_grp"]:

@@ -1,12 +1,27 @@
 # ============================================================================
-# Proyecto:        pyPSPrintProject
-# Descripción:     Print Project de proyecto de proyecto exportado a XML
-# Nombre Archivo:  projectParser.py
-# Autor:           akanashiro@gmail.com
-# Historial de Modificaciones:
-# Fecha            Autor        Ref.     Descripción
-# 2026/03/22       AKF          #001     Parseador de XML.
+# Project:          pyPSPrintProject
+# Description:      Print Project de proyecto de proyecto exportado a XML
+# File:             projectParser.py
+# Author:           akanashiro@gmail.com
+# License:          MIT - read LICENSE in repo
+# Changelog:
+# Date             Author       Ref.     Description
+# 2026/03/22       AKF          #001     XML parser.
 # ============================================================================
+
+"""
+projectParser.py
+-------------------
+Funciones auxiliares para el proyecto pyPSPrintProject, incluyendo:
+- getFieldTypeDescription: Convierte el código de tipo de campo a una descripción legible
+- getRecordTypeDescription: Convierte el código de tipo de registro a una descripción legible
+- getPageTypeDescription: Convierte el código de tipo de página a una descripción legible
+- decodeFieldFlags: Decodifica los bit del campo fUseEdit del XML para saber qué tipo de campo es
+
+Requisitos:
+    N/A
+
+"""
 
 # Begin 001
 
@@ -18,6 +33,13 @@ import helperFunctions as helpers
 
 @dataclass
 class FieldDefinition:
+
+    """
+    FieldDefinition class:
+    This class stores Basic Field definition.
+    To-do: xlat values.
+    """
+
     name: str
     field_type: str
     length: Optional[int] = None
@@ -32,6 +54,12 @@ class FieldDefinition:
 
 @dataclass
 class RecordField:
+
+    """
+    RecordField class:
+    This class stores Record Field definition.
+    """
+
     name: str
     field_type: str          # CHAR, LONG CHAR, NUMBER, DATE, TIME, DATETIME, IMAGE, etc.
     length: Optional[int] = 0
@@ -52,6 +80,13 @@ class RecordField:
 
 @dataclass
 class RecordDefinition:
+
+    """
+    RecordDefinition class:
+    This class stores Record definition.
+    getRecordInfo: prints Record definition to console. For debug purposes.
+    """
+
     name: str
     record_type: str          # TABLE, VIEW, DERIVED/WORK, SUBRECORD, DYNAMIC VIEW, QUERY VIEW
     fields: list[RecordField] = field(default_factory=list)
@@ -89,14 +124,16 @@ class PageControl:
 
 @dataclass
 class PeopleCodeEvent:
+    component: str
+    market: str
     record_name: str
     field_name: str
     event_type: str           # FieldDefault, FieldFormula, RowInit, RowInsert, RowDelete,
                               # SavePreChange, SavePostChange, FieldEdit, FieldChange,
                               # PrePopup, Activate, ItemSelected, etc.
+    code_type: str           # Record, Component, Component Record, Component Record Field
     source_code: str = ""
     # functions: list[str] = field(default_factory=list)
-
 
 @dataclass
 class PageDefinition:
@@ -116,6 +153,61 @@ class AppPackagePCode:
     def getPeopleCodeInfo(self):
        print (f"  🗂️  📄 Code Type: {self.code_type}\n PeopleCode Event: {self.app_package} {self.event}\n    📄 Source Code: {self.source_code}")
 
+@dataclass
+class MsgCatalog:
+    message_set: int
+    message_number: int
+    severity: str             # Message, Warning, Error
+    message_text: str = ""
+    explanation: Optional[str] = None
+
+
+# ============================================================================
+# Application Engine Classes
+# ============================================================================
+
+@dataclass
+class aetRecord:
+    name: str
+    defRecord: str
+
+@dataclass
+class AppEngineSteps:
+    section_name: str
+    program_name: str
+    # section_type: str         # Prepare, Process, etc.
+    stepName: str
+    #stepActions: list[dict] = field(default_factory=list)   # step → action (SQL, PeopleCode, CallSection, etc.)
+    stepActions: str
+
+
+@dataclass
+class AppEngineSection:
+    section_name: str
+    program_name: str
+    steps: list[AppEngineSteps] = field(default_factory=list)
+    
+
+@dataclass
+class AppEngineProgram:
+    name: str
+    aeType: str      # Standard, Daemon, etc.
+    disRestart: str
+    aetRecords: list[aetRecord] = field(default_factory=list)
+    sections: list[AppEngineSection] = field(default_factory=list)
+    peoplecode: list[PeopleCodeEvent] = field(default_factory=list)
+    description: Optional[str] = None    
+
+# ============================================================================
+# Process Classes
+# ============================================================================
+@dataclass
+class ProcSecComp:
+    component: str = ""
+
+@dataclass
+class ProcSecGroups:
+    processGroup: str =""
 
 @dataclass
 class ProcessDefinition:
@@ -123,10 +215,45 @@ class ProcessDefinition:
     process_type: str         # SQR, COBOL, Application Engine, Crystal, etc.
     description: Optional[str] = None
     run_location: Optional[str] = None
+    parameters: Optional[str] = None
+    components: [ProcSecComp] = None
+    procGroups: [ProcSecGroups] = None
 
     def getProcessInfo(self):
         print (f"  🗂️  Process: {self.name}\n  📄 Description: {self.description}\n  📄 Type: {self.process_type}\n  📄 Run Location: {self.run_location}")
 
+# ============================================================================
+# Job Classes
+# ============================================================================
+@dataclass
+class JobProcessDefinition:
+    jobSeqNbr: str
+    procType: str
+    procName: str
+
+@dataclass
+class JobDefinition:
+    jobName: str
+    jobDescr: str
+    processCat: str
+    processList: [JobProcessDefinition] = None
+
+# ============================================================================
+# Service Operation Classes
+# ============================================================================
+@dataclass
+class uriTemplateDefinition:
+    uriSeq: str
+    uriTemplate: str
+
+@dataclass
+class serviceOperationDefinition:
+    name: str
+    restMethod: str
+    description: str
+    restBaseUrl: str
+    comments: Optional[str] = None    
+    uriTemplates: [uriTemplateDefinition] = None
 
 @dataclass
 class PSProject:
@@ -144,15 +271,18 @@ class PSProject:
     sql_objects: list[SQLDefinition] = field(default_factory=list)
     pages: list[PageDefinition] = field(default_factory=list)    
     processes: list[ProcessDefinition] = field(default_factory=list)
+    jobs: list[JobDefinition] = field(default_factory=list)
     peoplecode: list[PeopleCodeEvent] = field(default_factory=list)    
-    ap_peoplecode: list[AppPackagePCode] = field(default_factory=list)    
+    ap_peoplecode: list[AppPackagePCode] = field(default_factory=list)   
+    service_operations: list[serviceOperationDefinition] = field(default_factory=list)
+    app_engines: list[AppEngineProgram] = field(default_factory=list)
+    msg_catalog: list[MsgCatalog] = field(default_factory=list)
     """    
     components: list[ComponentDefinition] = field(default_factory=list)
     menus: list[MenuDefinition] = field(default_factory=list)
-    app_engines: list[AppEngineProgram] = field(default_factory=list)
+
     app_packages: list[AppPackageDefinition] = field(default_factory=list)
-    messages: list[MessageDefinition] = field(default_factory=list)
-    service_operations: list[ServiceOperation] = field(default_factory=list)
+
     queries: list[QueryDefinition] = field(default_factory=list)
     style_sheets: list[StyleSheetDefinition] = field(default_factory=list)
     roles: list[RoleDefinition] = field(default_factory=list)
@@ -163,6 +293,15 @@ class PSProject:
 
 
     def _getRecFieldDefinition(self, recordNameStr_: str, row_) -> list[RecordField]:
+
+        """
+        Gets Record.Field definition from XML
+
+        :param recordNameStr_: Record Name
+        :param row_: where cursor is positioned
+        :return: a list of RecordField object
+        """
+
         recFieldNode = row_.find(".//rowset[@name='RecField']")
         
         fieldObjs = []
@@ -236,6 +375,15 @@ class PSProject:
             return fieldObjs
 
     def _getRecordDefinition(self, recordNameStr_: str, rootNode_) -> RecordDefinition | None:
+
+
+        """
+        Gets Record from XML
+
+        :param recordNameStr_: Record Name as an objectvalue
+        :param rootNode_: where cursor is positioned
+        :return: a list of RecordDefinition object
+        """
 
         for instance in rootNode_.iter("instance"):            
             if instance.get("class") == "RDM":         
@@ -313,14 +461,82 @@ class PSProject:
                             szDescrStr = procRow.findtext("szDescr", default="").strip()
                             szRunLocationStr = procRow.findtext("szRunLocation", default="").strip()
 
+                            szParmListStr = procRow.findtext("szParmList", default="").strip() # trace
+
+                            # Browse Process Security
+                            componentNode = procDefnNode.find(".//lpPnlGrpList/rowset[@name='PsdPnlGrp']")
+
+                            componentDict = []
+                            procGrpDict = []
+
+                            if componentNode is not None:
+                                for compRow in componentNode.findall("row"):
+                                    szPnlGrpNameStr = compRow.findtext("szPnlGrpName", default="").strip() # Component
+                                    componentObj = ProcSecComp(
+                                        component = szPnlGrpNameStr
+                                    )
+                                    # print(f"{szPnlGrpNameStr}")
+                                    componentDict.append(componentObj)
+
+                            procGroupNode = procDefnNode.find(".//lpPrcsGrpList/rowset[@name='PsdPrcsGrp']")
+                            if procGroupNode is not None:
+                                for procGrouprow in procGroupNode.findall("row"):
+                                    szPrcsGrpStr = procGrouprow.findtext("szPrcsGrp", default="").strip() # Process Groups
+                                    procGrpObj = ProcSecGroups(
+                                        processGroup = szPrcsGrpStr
+                                    )
+                                    # print(f"{szPrcsGrpStr}")
+                                    procGrpDict.append(procGrpObj)                                    
+
                             procDefnObj = ProcessDefinition(
-                                name=szPrcsNameStr,
-                                process_type=szPrcsTypeStr,
-                                description=szDescrStr,
-                                run_location=szRunLocationStr
+                                name = szPrcsNameStr,
+                                process_type = szPrcsTypeStr,
+                                description = szDescrStr,
+                                run_location = szRunLocationStr,
+                                parameters = szParmListStr,
+                                components = componentDict,
+                                procGroups = procGrpDict
                             )
 
                             return procDefnObj
+        return None
+
+    def _getJobDefinition(self, jobNameStr_: str, rootNode_) -> JobDefinition | None:
+        for instance in rootNode_.iter("instance"):
+            if instance.get("class") == "PSJ":
+                jobDefnNode = instance.find(".//rowset[@name='PsjDefn']")
+                
+                if jobDefnNode is not None:
+                    jobProcArray=[]
+                    for jobRow in jobDefnNode.findall("row"):
+                        szJobNameStr = jobRow.findtext("szJobName", default="").strip()
+                        szPrcsTypeStr = jobRow.findtext("szPrcsType", default="").strip()
+                                              
+                        if jobNameStr_ == szJobNameStr and szPrcsTypeStr == "PSJob":
+                            szDescrStr =  jobRow.findtext("szDescr", default="").strip()
+                            szPrcsCategoryStr = jobRow.findtext("szPrcsCategory", default="").strip()
+                            jobProcNode = jobDefnNode.find(".//lpItemList/rowset[@name='PsjItem']")
+                            
+                            if jobProcNode is not None:
+                                for procRow in jobProcNode.findall("row"):
+                                    nJobSeqStr = procRow.findtext("nJobSeq", default="").strip()
+                                    szPrcsTypeStr = procRow.findtext("szPrcsType", default="").strip()
+                                    szPrcsNameStr = procRow.findtext("szPrcsName", default="").strip()                                    
+
+                                    jobProcObj = JobProcessDefinition(
+                                        jobSeqNbr = nJobSeqStr,
+                                        procType = szPrcsTypeStr,
+                                        procName = szPrcsNameStr
+                                    )
+                                    jobProcArray.append(jobProcObj)
+                            
+                            jobDefnObj = JobDefinition(
+                                jobName = jobNameStr_,
+                                jobDescr = szDescrStr,
+                                processCat = szPrcsCategoryStr,
+                                processList = jobProcArray
+                            )
+                            return jobDefnObj
         return None
 
     def _getSQLDefinition(self, sqlNameStr_: str, objectValue1_: str, rootNode_) -> SQLDefinition | None:
@@ -366,31 +582,75 @@ class PSProject:
                             return sqlDefnObj
         return None
 
-    def _getRecordPeopleCode(self, objectValue0_: str, objectValue1_: str, objectValue2_: str, rootNode_) -> PeopleCodeEvent | None:
+    def _getEventPeopleCode(self, objectValue0_: str, objectValue1_: str, objectValue2_: str, objectValue3_: str, objectValue4_:str, eventTypeStr_: str, rootNode_) -> PeopleCodeEvent | None:
+
+        # Inicialización de variables
+        recordNameStr = ""
+        componentStr = ""
+        marketStr = ""
+
+
         for instance in rootNode_.iter("instance"):
             if instance.get("class") == "PCM":
                 pcNode = instance.find(".//rowset[@name='PcmProg']")
                 if pcNode is not None:
                     for pcRow in pcNode.findall("row"):
-                        szObjectValue_0Str = pcRow.findtext("szObjectValue_0", default="").strip() # Record
-                        szObjectValue_1Str = pcRow.findtext("szObjectValue_1", default="").strip() # Field
-                        szObjectValue_2Str = pcRow.findtext("szObjectValue_2", default="").strip() # Event
-                        
+                        match eventTypeStr_:
+                            case "REC" | "CMP":
+                                szObjectValue_0Str = pcRow.findtext("szObjectValue_0", default="").strip() # Record | Component
+                                szObjectValue_1Str = pcRow.findtext("szObjectValue_1", default="").strip() # Field | Market
+                                szObjectValue_2Str = pcRow.findtext("szObjectValue_2", default="").strip() # Event | Event
+                                if szObjectValue_0Str == objectValue0_ and szObjectValue_1Str == objectValue1_ and szObjectValue_2Str == objectValue2_ :
 
-                        if szObjectValue_0Str == objectValue0_ and szObjectValue_1Str == objectValue1_ and szObjectValue_2Str == objectValue2_ :
+                                    if eventTypeStr_ == "REC":
+                                        peopleCodeTypeStr = "Record"
+                                        recordNameStr = objectValue0_
+                                    
+                                    if eventTypeStr_ == "CMP":
+                                        peopleCodeTypeStr = "Component"
+                                        componentStr = objectValue0_
+                                        marketStr = szObjectValue_1Str
 
-                            peopleCodeText = instance.find(".//peoplecode_text")    
+                                    peopleCodeText = instance.find(".//peoplecode_text")    
 
-                            pcEventObj = PeopleCodeEvent(
-                                    record_name = objectValue0_,
-                                    field_name = objectValue1_,
-                                    event_type =  objectValue2_,          # FieldDefault, FieldFormula, RowInit, RowInsert, RowDelete,
-                                                              # SavePreChange, SavePostChange, FieldEdit, FieldChange,
-                                                              # PrePopup, Activate, ItemSelected, etc.
-                                    source_code = peopleCodeText.text.strip()
-                            )
-                            
-                            return pcEventObj
+                                    pcEventObj = PeopleCodeEvent(
+                                            component = componentStr,
+                                            market = marketStr,
+                                            record_name = recordNameStr,                                            
+                                            field_name = objectValue1_,
+                                            event_type =  objectValue2_,          # FieldDefault, FieldFormula, RowInit, RowInsert, RowDelete,
+                                                                    # SavePreChange, SavePostChange, FieldEdit, FieldChange,
+                                                                    # PrePopup, Activate, ItemSelected, etc.
+                                            code_type = peopleCodeTypeStr,                                                            
+                                            source_code = peopleCodeText.text.strip()
+                                    )
+                                    return pcEventObj
+                                    
+                            case "CRF":
+                                szObjectValue_0Str = pcRow.findtext("szObjectValue_0", default="").strip() # Component
+                                szObjectValue_1Str = pcRow.findtext("szObjectValue_1", default="").strip() # Market
+                                szObjectValue_2Str = pcRow.findtext("szObjectValue_2", default="").strip() # Record
+                                szObjectValue_3Str = pcRow.findtext("szObjectValue_3", default="").strip() # Field
+                                szObjectValue_4Str = pcRow.findtext("szObjectValue_4", default="").strip() # Event
+
+                                peopleCodeTypeStr = "Component Record Field"
+
+                                if szObjectValue_0Str == objectValue0_ and szObjectValue_1Str == objectValue1_ and szObjectValue_2Str == objectValue2_ and szObjectValue_3Str == objectValue3_  and  szObjectValue_4Str == objectValue4_ :
+
+                                    peopleCodeText = instance.find(".//peoplecode_text")    
+                                    print(f"{szObjectValue_0Str}.{szObjectValue_1Str}.{szObjectValue_2Str}.{szObjectValue_3Str}.{szObjectValue_4Str}")
+                                    pcEventObj = PeopleCodeEvent(
+                                        component = szObjectValue_0Str,
+                                        market = szObjectValue_1Str,                                        
+                                        record_name = szObjectValue_2Str,
+                                        field_name = szObjectValue_3Str,
+                                        event_type =  szObjectValue_4Str,          # FieldDefault, FieldFormula, RowInit, RowInsert, RowDelete,
+                                                                    # SavePreChange, SavePostChange, FieldEdit, FieldChange,
+                                                                    # PrePopup, Activate, ItemSelected, etc.
+                                        code_type = peopleCodeTypeStr,                                                            
+                                        source_code = peopleCodeText.text.strip()
+                                    )                                
+                                    return pcEventObj
         return None
 
     def _getAppPackagePeopleCode(self, packageNameStr_: str, objectValue1_: str, objectValue2_: str, objectValue3_: str, rootNode_) -> AppPackagePCode | None:
@@ -448,7 +708,234 @@ class PSProject:
                             return pageObj
         return None
 
-    def _describeItems(self, objectTypeNode_, objectValue0_, objectValue1_, objectValue2_, objectValue3_, rootNode_):
+    def _getServiceOpDef(self, serviceOpDefStr_: str, rootNode_) -> serviceOperationDefinition | None:
+        for instance in rootNode_.iter("instance"):            
+            if instance.get("class") == "OPRM":         
+                soNode = instance.find(".//rowset[@name='Operation']")
+
+                if soNode is not None:
+                    uriTemplateArray = []
+                    for servOpRow in soNode.findall("row"):
+                        szOperationnameStr = servOpRow.findtext("szOperationname", default="").strip()
+                                                    
+                        if szOperationnameStr == serviceOpDefStr_:
+                            versionStr = servOpRow.findtext("szDefaultversion", default="").strip()
+                            restMethodStr = servOpRow.findtext("szRestmethod", default="").strip()
+                            szDescrStr = servOpRow.findtext("szDescr", default="").strip() 
+                            operDescrStr =  servOpRow.findtext("lpszDescrlong", default="").strip()
+                            restBaseUrlStr = servOpRow.findtext("szRestBaseurl", default="").strip()
+
+                            uriTemplateNode = soNode.find(".//rowset[@name='Operationuritemplate']")
+
+                            if uriTemplateNode is not None:                               
+                                for uriTemplRow in uriTemplateNode.findall("row"):
+                                    uriSeqStr = uriTemplRow.findtext("nURISeq", default="").strip()
+                                    uriTemplateStr = uriTemplRow.find("lpszURITemplate/rowset/row/lpszURITemplate").text
+                                    uriTemplateObj = uriTemplateDefinition(
+                                        uriSeq  = uriSeqStr,
+                                        uriTemplate = uriTemplateStr
+                                    )
+                                    uriTemplateArray.append(uriTemplateObj)
+                                    # print(f"{uriTemplateStr}")
+
+                        serviceOperObj = serviceOperationDefinition(
+                            name = serviceOpDefStr_,
+                            restMethod = restMethodStr,
+                            description = szDescrStr,
+                            comments = operDescrStr,
+                            restBaseUrl = restBaseUrlStr,
+                            uriTemplates = uriTemplateArray
+                        )
+                        
+                        return serviceOperObj
+        return None
+
+
+    def _getAppEngine(self, appEngineStr_: str, rootNode_) -> AppEngineProgram | None:
+
+        # Default values
+        aeSectionDict = []
+        returnObjectBool = False
+        aeTypeStr = ""
+        disableRestartStr = ""
+        aeDescrStr = ""
+        aetDict = []
+        for instance in rootNode_.iter("instance"):
+            
+            if instance.get("class") == "AEM":
+                aeDefNode = instance.find(".//rowset[@name='AemDefn']")
+                
+                if aeDefNode is not None:
+                    for aeDefRow in aeDefNode.findall("row"):
+                        aeNameStr = aeDefRow.findtext("szApplId", default="").strip()
+                        if aeNameStr == appEngineStr_:
+                            aeDescrStr = aeDefRow.findtext("szDescr", default="").strip()
+                            
+                            if aeDefRow.findtext("cApplLibrary", default="").strip() == "N":
+                                aeTypeStr = "App Engine"
+                            else:
+                                aeTypeStr = "App Library"
+
+                            disableRestartStr = aeDefRow.findtext("cDisableRestart", default="").strip() # Y/N
+
+                            
+                            aetNode = aeDefNode.find(".//lpStateT/rowset[@name='AeState']")
+
+                            if aetNode is not None:
+                                for aetRow in aetNode.findall("row"):
+                                    aetRecStr = aetRow.findtext("szStateRecName", default="").strip()
+                                    aetDefStr = aetRow.findtext("cDefaultState", default="").strip()
+
+                                    aetObj=aetRecord(
+                                        name = aetRecStr,                    
+                                        defRecord = aetDefStr
+                                    )
+                                aetDict.append(aetObj)
+
+                            # Faltan obtener los Temporary Tables                            
+
+                returnObjectBool = True
+            
+        for instance in rootNode_.iter("instance"):
+            if instance.get("class") == "AES":         
+                aeNode = instance.find(".//rowset[@name='AesDefn']")
+                
+                if aeNode is not None:
+                    
+                    for aeRow in aeNode.findall("row"):
+                        szApplIdStr = aeRow.findtext("szApplId", default="").strip()
+                                                    
+                        if szApplIdStr == appEngineStr_:
+
+                            sectionNameStr =  aeRow.findtext("szSection", default="").strip() # MAIN
+
+                            aeSectionNode = aeNode.find(".//lpSectT/rowset[@name='AeSect']")
+                            if aeSectionNode is not None:
+                                aeSectionsDict = []
+                                for sectionRow in aeSectionNode.findall("row"):
+                                    aeStepNode = aeSectionNode.find(".//lpStepT/rowset[@name='AeStep']")
+                                    
+                                    if aeStepNode is not None:
+                                        aeStepsDict = []
+                                        
+                                        for aeStepRow in aeStepNode.findall("row"):
+                                            stepsDict = []
+                                            stepsStr = ""
+                                            aeStepNameStr = aeStepRow.findtext("szStep", default="").strip()
+
+                                            # Do Actions Step (Do While, Do When, Do Select, Do Until).
+                                            if aeStepRow.find("lpAeStmtWhen/rowset[@name='AeStmtWhen']") is not None:
+                                                stepsDict.append( "Do When")
+                                                if len(stepsStr) > 0:
+                                                    stepsStr = stepsStr + " - Do When"
+                                                else:
+                                                    stepsStr = "Do When"
+
+                                            if aeStepRow.find("lpAeStmtSelect/rowset[@name='AeStmtWhen']") is not None:
+                                                stepsDict.append("Do Select")
+                                                if len(stepsStr) > 0:
+                                                    stepsStr = stepsStr + " - Do Select"
+                                                else:
+                                                    stepsStr = "Do Select"
+
+                                            # PeopleCode Step
+                                            if aeStepRow.find("lpAePcode/rowset[@name='AePcode']") is not None:
+                                                stepsDict.append( "PeopleCode")
+                                                if len(stepsStr) > 0:
+                                                    stepsStr = stepsStr + " - PeopleCode"
+                                                else:
+                                                    stepsStr = "PeopleCode"
+
+                                            # SQL
+                                            if aeStepRow.find("lpAeStmtSql/rowset[@name='AeStmtWhen']") is not None:
+                                                stepsDict.append("SQL")
+                                                if len(stepsStr) > 0:
+                                                    stepsStr = stepsStr + " - SQL"
+                                                else:
+                                                    stepsStr = "SQL"
+
+                                            # Call Section
+                                            if aeStepRow.find("lpAeDoSect/rowset[@name='AeDoSect']") is not None:
+                                                callAppStr = aeStepRow.find("lpAeDoSect/rowset[@name='AeDoSect']/row/szDoApplId").text
+                                                callAppSectStr = aeStepRow.find("lpAeDoSect/rowset[@name='AeDoSect']/row/szDoSection").text
+                                                stepsDict.append(f"Call Section {callAppStr}.{callAppSectStr}")
+                                                if len(stepsStr) > 0:
+                                                    stepsStr = stepsStr + " - Call Section " + callAppStr + "." + callAppSectStr
+                                                else:
+                                                    stepsStr = "Call Section " + callAppStr + "." + callAppSectStr
+                               
+                                            aStepsObj = AppEngineSteps(
+                                                section_name = sectionNameStr,
+                                                program_name = appEngineStr_,
+                                                stepName = aeStepNameStr,
+                                                stepActions = stepsStr #stepsDict
+                                            )
+
+                                            aeStepsDict.append(aStepsObj)
+
+                                    aeSectionObj = AppEngineSection(
+                                        section_name = sectionNameStr,
+                                        program_name = appEngineStr_,
+                                        steps = aeStepsDict
+                                    )
+                                    aeSectionDict.append(aeSectionObj)
+        if returnObjectBool == True:
+            
+            aeObj = AppEngineProgram(
+                name = appEngineStr_,
+                aeType = aeTypeStr,
+                aetRecords = aetDict,
+                sections =  aeSectionDict,
+                disRestart = disableRestartStr,
+                description = aeDescrStr,
+                # peoplecode: list[PeopleCodeEvent] = field(default_factory=list)
+            )
+            return aeObj
+        else:
+            return None
+
+
+    def _getMsgCatalog(self, msgSetStr_: str, msgNumberstr_: str, rootNode_) -> MsgCatalog | None:
+        for instance in rootNode_.iter("instance"):            
+            if instance.get("class") == "MSG":         
+                msgCatNode = instance.find(".//rowset[@name='MsgSet']")
+
+                if msgCatNode is not None:
+                    for msgCatRow in msgCatNode.findall("row"):
+                        msgSetStr = msgCatRow.findtext("lMsgSet", default="").strip()
+
+                        msgNumberNode =  msgCatRow.find(".//hMvt/rowset[@name='MsgNum']")
+                        
+                        if msgNumberNode is not None:
+                            
+                            # severityCodeStr=""
+                            for msgNumberRow in msgNumberNode.findall("row"):
+                                msgNumberStr = msgNumberRow.findtext("lMsgNum", default="").strip()
+                                print (f"mensaje {msgNumberStr} = {msgNumberstr_}")
+                                if msgNumberStr == msgNumberstr_:
+                                    
+                                    match msgNumberRow.findtext("cMsgSeverity", default="").strip():
+                                        case "M":
+                                            severityCodeStr = "Message"
+                                        case "E":
+                                            severityCodeStr = "Error"
+                                        case _:
+                                            severityCodeStr = "Unknown"
+
+                                    pszMsgText = msgNumberRow.find(".//pszMsgText/rowset/row/pszMsgText").text
+
+                                    msgCatObj = MsgCatalog(
+                                        message_set = msgSetStr_,
+                                        message_number = msgNumberstr_,
+                                        severity = severityCodeStr,
+                                        message_text = pszMsgText
+                                    )
+                                    
+                                    return msgCatObj
+        return None
+
+
+    def _describeItems(self, objectTypeNode_, objectValue0_, objectValue1_, objectValue2_, objectValue3_, objectValue4_, rootNode_):
 
         """
         Parsea el archivo XML exportado desde PeopleSoft Application Designer
@@ -508,7 +995,7 @@ class PSProject:
                 print(f"🔹 Component: {objectValue0_}")
             case "8":
                 # Definición de Record PeopleCode
-                resultObj = self._getRecordPeopleCode(objectValue0_, objectValue1_, objectValue2_, rootNode_)
+                resultObj = self._getEventPeopleCode(objectValue0_, objectValue1_, objectValue2_, objectValue3_, objectValue4_, "REC", rootNode_)
                 if resultObj is not None:
                     self.peoplecode.append(resultObj)
             case "14":
@@ -520,10 +1007,16 @@ class PSProject:
                     self.processes.append(resultObj)
             case "23":
                 # Definición de Job
-                print(f"📄 Job Definition: {objectValue0_}")                
+                resultObj = self._getJobDefinition(objectValue0_, rootNode_)
+                if resultObj is not None:
+                    self.jobs.append(resultObj)                
+                #print(f"📄 Job Definition: {objectValue0_}")                
             case "25":
-                # Definición de Catálogo de Mensajes
-                print(f"📄 Message Catalog:: {objectValue0_}")
+                # Message Catalog
+                resultObj = self._getMsgCatalog(objectValue0_, objectValue1_, rootNode_)
+                if resultObj is not None:
+                    self.msg_catalog.append(resultObj)                 
+                #print(f"📄 Message Catalog:: {objectValue0_}.{objectValue1_}")
             case "26":
                 print(f"📄 Process Definition: {objectValue0_}") 
             case "29":
@@ -542,7 +1035,11 @@ class PSProject:
             case "31":
                 print(f"📄 File Layout: {objectValue0_}")                
             case "33":
-                print(f"📄 Application Engine Program: {objectValue0_}")                
+                # Application Engine
+                resultObj = self._getAppEngine(objectValue0_, rootNode_)
+                if resultObj is not None:
+                    self.app_engines.append(resultObj)            
+                # print(f"📄 Application Engine Program: {objectValue0_}")                
             case "34":
                 print(f"📄 Application Engine Section: {objectValue0_}")
             case "43":
@@ -550,7 +1047,16 @@ class PSProject:
             case "40":
                 print(f"📄 Service Operation: {objectValue0_}")
             case "46":
-                print(f"📄 Portal Registry Structure: {objectValue0_}")
+                # Definición de Component PeopleCode
+                resultObj = self._getEventPeopleCode(objectValue0_, objectValue1_, objectValue2_, objectValue3_, objectValue4_, "CMP", rootNode_)
+                if resultObj is not None:
+                    self.peoplecode.append(resultObj)
+            case "48":
+                # Definición de Component Record Field PeopleCode
+                objectValue3Str_, objectValue4Str_ = objectValue3_.split()
+                resultObj = self._getEventPeopleCode(objectValue0_, objectValue1_, objectValue2_, objectValue3Str_, objectValue4Str_, "CRF", rootNode_)
+                if resultObj is not None:
+                    self.peoplecode.append(resultObj)            
             case "54":
                 print(f"📄 Activity Guide: {objectValue0_}")
             case "58":                
@@ -563,6 +1069,11 @@ class PSProject:
                         self.ap_peoplecode.append(resultObj)
             case "66":
                 print(f"📄 Style Sheet: {objectValue0_}")
+            case "80":
+                # Definición de Service Operation
+                resultObj = self._getServiceOpDef(objectValue0_, rootNode_)
+                if resultObj is not None:
+                    self.service_operations.append(resultObj)            
             case "104":
                 print(f"📄 Query: {objectValue0_}")
             case "116":
@@ -616,10 +1127,11 @@ def getProject(xml_path: str)  -> PSProject  | None:
                             objectValue1 = row.findtext("szObjectValue_1", default="").strip()
                             objectValue2 = row.findtext("szObjectValue_2", default="").strip()
                             objectValue3 = row.findtext("szObjectValue_3", default="").strip()
+                            objectValue4 = row.findtext("szObjectValue_3", default="").strip()                            
 
                             # Debug print(f"Procesando item: ObjectType={objectTypeNode}, ObjectValue0={objectValue0}, ObjectValue1={objectValue1}, ObjectValue2={objectValue2}, ObjectValue3={objectValue3}")
 
-                            projectObj._describeItems(objectTypeNode, objectValue0, objectValue1, objectValue2, objectValue3, root)
+                            projectObj._describeItems(objectTypeNode, objectValue0, objectValue1, objectValue2, objectValue3, objectValue4, root)
 
                     return projectObj
 

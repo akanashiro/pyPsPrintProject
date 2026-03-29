@@ -1,29 +1,72 @@
 # pyPsPrintProject
 
-Esta aplicación ayudar a documentar proyectos hechos en PeopleSoft y exportados a archivo Application Designer.
-Extrae las definiciones que se encuentren en el XML y las vuelca a el objeto _projectObj_ de la clase _PSProject_
+This application helps you to document those PeopleSoft projects exported to a file with Application Designer.
+It extracts the definitions found in XML file and loaded them into classes so they can be browsed and dump them into a text file (.md or .docx)
 
-Las definiciones guardadas en el objeto son:
-* Records
-* Fields
-* Pages
-* Processes
-* SQL objects
+Definitions that work:
+* Record Definition
+* Field Definition
+* Page Definition
+* Process Definition
+* SQL Object
 * Record PeopleCode
+* Component PeopleCode
+* Component Record Field PeopleCode
 * Application Package PeopleCode
+* Application Engine basic information
+* Message Catalog
 
 To-do:
-* Resto de las definiciones que se encuentren en un proyecto.
-* Volcar las definiciones a formato .docx.
+* Components
+* File Layouts
+* Application Engine:
+  * SQL
+  * PeopleCode
+  * Temporary Table list
+* Remaining definitions found in the XML file
+* Message Catalog long explanation
+* Menu
+* Roles
+* Permission Lists
+* Content Reference
+* Application Package
+* Index
 
-La sintaxis de ejecución
-```
-    python main.py MiProyecto.xml --format md [--output MiProyecto.md]
-    python main.py MiProyecto.xml -f md [-o MiProyecto.md]
-    python main.py MiProyecto.xml --format docx --template plantilla.docx [--output MiProyecto.docx]
-    python main.py MiProyecto.xml --ft docx -t plantilla.docx [-o MiProyecto.docx]
+Won't:
+* PeopleCode Menu
+* Other objects that are not so common like CSS styles or icons
+
+First Step:
+PeopleSoft XML doesn't come with root tag (don't know why), so you will see something like this.
+```XML
+<?xml version='1.0'?>
+  <!--Warning : Don't edit this file -->
+  <instance class="PJM">
+    <rowset name="PjmDefn" size="2856" count="1">
+      <row>
 ```
 
-**Nota:**
-1. Este es mi proyecto hobby por lo que está hecho en mis tiempos libres.
-2. Lo libero bajo licencia MIT para que cualquiera pueda beneficiarse de esta herramienta.
+You must open the XML file and add <root> tag before <instance> and the end of the file.
+```XML
+<?xml version='1.0'?>
+<root>
+  <!--Warning : Don't edit this file -->
+  <instance class="PJM">
+    <rowset name="PjmDefn" size="2856" count="1">
+      <row>
+      ...
+</root>
+```
+
+How to run:
+```
+    >> python main.py MyProject.xml --format md [--output MyProject.md]
+    >> python main.py MyProject.xml -f md [-o MyProject.md]
+    >> python main.py MyProject.xml --format docx --template MyTemplate.docx [--output MyProject.docx]
+    >> python main.py MyProject.xml --ft docx -t MyTemplate.docx [-o MyProject.docx]
+```
+
+
+**Note:**
+1. This is my hobbyst project and done in my spare time. Expect some rough edges..
+2. I release this application under MIT license so all the PeopleSoft community could benefit from this tool.

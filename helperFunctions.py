@@ -1,13 +1,13 @@
 # ============================================================================
-# Proyecto:        pyPSPrintProject
-# Descripción:     Print Project de proyecto de proyecto exportado a XML
-# Nombre Archivo:  helperFunctions.py
-# Autor:           akanashiro@gmail.com
-# Historial de Modificaciones:
-# Fecha            Autor        Ref.     Descripción
-# 2026/03/22       AKF          #001     Funciones de ayuda.
+# Project:          pyPSPrintProject
+# Description:      Print Project de proyecto de proyecto exportado a XML
+# File:             helperFunctions.py
+# Author:           akanashiro@gmail.com
+# License:          MIT - read LICENSE in repo
+# Changelog:
+# Date             Author       Ref.     Description
+# 2026/03/22       AKF          #001     Additional functions needed
 # ============================================================================
-
 """
 helperFunctions.py
 -------------------
@@ -19,7 +19,6 @@ Funciones auxiliares para el proyecto pyPSPrintProject, incluyendo:
 
 Requisitos:
     N/A
-
 
 """
 
