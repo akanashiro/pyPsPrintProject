@@ -74,7 +74,9 @@ def getRecordTypeDescription(recTypeStr_: str) -> str:
             return "Dynamic View"
         case "5":
             return "Query View"
-    
+        case "7":
+            return "Temporary Table"
+            
     return f"Unknown ({recTypeStr_})" 
 
 def getPageTypeDescription(pageTypeStr_: str) -> str:

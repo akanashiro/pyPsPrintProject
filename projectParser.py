@@ -12,11 +12,6 @@
 """
 projectParser.py
 -------------------
-Funciones auxiliares para el proyecto pyPSPrintProject, incluyendo:
-- getFieldTypeDescription: Convierte el código de tipo de campo a una descripción legible
-- getRecordTypeDescription: Convierte el código de tipo de registro a una descripción legible
-- getPageTypeDescription: Convierte el código de tipo de página a una descripción legible
-- decodeFieldFlags: Decodifica los bit del campo fUseEdit del XML para saber qué tipo de campo es
 
 Requisitos:
     N/A
@@ -29,12 +24,45 @@ import helperFunctions as helpers
 
 
 @dataclass
+class SQLDefinition:
+
+    """
+    This class represents SQL object definition.  
+    """
+
+    name: str
+    sql_type: str             # SQL Object, View, etc.
+    sql_text: str = ""
+    description: Optional[str] = None
+    
+    def getSQLInfo(self):
+        if self.sql_type == "SQL Object":
+            print (f"  🗂️  SQL Object: {self.name}\n  📄 Description: {self.description}\n  📄 Type: {self.sql_type}\n  📄 SQL Text: {self.sql_text}")
+
+# ============================================================================
+# Field Definition
+# ============================================================================
+
+@dataclass
+class TranslateValue:
+
+    """
+    This class represents xlats.
+    """
+
+    value: str
+    long_name: str
+    short_name: str
+    effective_date: Optional[str] = None
+    status: Optional[str] = None
+
+
+@dataclass
 class FieldDefinition:
 
     """
-    FieldDefinition class:
-    This class stores Basic Field definition.
-    To-do: xlat values.
+    This class represents Basic Field definition.
+    getFieldInfo: prints Field definition to console. For debug purposes.
     """
 
     name: str
@@ -43,8 +71,8 @@ class FieldDefinition:
     decimals: Optional[int] = None
     long_name: Optional[str] = None
     short_name: Optional[str] = None
-    #translate_values: list[TranslateValue] = field(default_factory=list)
-    description: Optional[str] = None
+    translate_values: list[TranslateValue] = None
+    # description: Optional[str] = None
 
     def getFieldInfo(self):
         print (f"  🗂️  Field: {self.name}\n  📄 Description: {self.description}\n  📄 Field Type: {self.field_type}\n  📄 Length: {self.length}\n  📄 Decimals: {self.decimals}")
@@ -53,8 +81,7 @@ class FieldDefinition:
 class RecordField:
 
     """
-    RecordField class:
-    This class stores Record Field definition.
+    This class represents Record Field definition.
     """
 
     name: str
@@ -79,15 +106,14 @@ class RecordField:
 class RecordDefinition:
 
     """
-    RecordDefinition class:
-    This class stores Record definition.
+    This class represents Record definition.
     getRecordInfo: prints Record definition to console. For debug purposes.
     """
 
     name: str
     record_type: str          # TABLE, VIEW, DERIVED/WORK, SUBRECORD, DYNAMIC VIEW, QUERY VIEW
     fields: list[RecordField] = field(default_factory=list)
-    sql_view_text: Optional[str] = None
+    sql_view_text: SQLDefinition = None
     description: Optional[str] = None
     parent_record: Optional[str] = None
 
@@ -101,6 +127,121 @@ class RecordDefinition:
 
 
 @dataclass
+class MenuDefinition:
+    """
+    This class represents Menu definition.    
+    """
+
+    name: str
+    menu_items: list[dict] = field(default_factory=list)
+    description: Optional[str] = None
+
+@dataclass
+class MenuDefinitionSec:
+    """
+    This class represents Menu definition security.
+    """
+    name : str
+    barName : str
+    barItemName : str
+    pnlItemName : str
+    displayOnly : str
+    authFlags : str
+
+@dataclass
+class PermissionListDefinition:
+    """
+    This class represents Permission List definition.
+    """    
+    name: str
+    description: Optional[str] = None
+    menu_items: list[MenuDefinitionSec] = field(default_factory=list)
+
+@dataclass
+class PageControl:
+    control_type: str         # EditBox, DropDown, CheckBox, RadioButton, Grid, SubPage, etc.
+    record_name: Optional[str] = None
+    field_name: Optional[str] = None
+    label: Optional[str] = None
+    occurrence: Optional[int] = None
+
+@dataclass
+class PeopleCodeEvent:
+
+    """
+    This class represents PeopleCode event.
+    It may be associated to a Record Field, a Record, a Component, or a Component Record.
+    """ 
+
+    component: str
+    market: str
+    record_name: str
+    field_name: str
+    event_type: str           # FieldDefault, FieldFormula, RowInit, RowInsert, RowDelete,
+                              # SavePreChange, SavePostChange, FieldEdit, FieldChange,
+                              # PrePopup, Activate, ItemSelected, etc.
+    code_type: str           # Record, Component, Component Record, Component Record Field
+    source_code: str = ""
+    
+@dataclass
+class PageDefinition:
+
+    """
+    This class represents Page definition.
+    """ 
+
+    name: str
+    page_type: str            # Standard, Secondary, Popup, etc.
+    #controls: list[PageControl] = field(default_factory=list)
+    description: Optional[str] = None
+
+@dataclass
+class AppPackagePCode:
+
+    """
+    This class represents Application Package PeopleCode.
+    """ 
+
+    app_package: str = ""
+    code_type: str  ="Application Package PeopleCode"  
+    event: str =""          
+    source_code: str = ""
+    #functions: list[str] = field(default_factory=list)
+
+    def getPeopleCodeInfo(self):
+       print (f"  🗂️  📄 Code Type: {self.code_type}\n PeopleCode Event: {self.app_package} {self.event}\n    📄 Source Code: {self.source_code}")
+
+@dataclass
+class MsgCatalog:
+
+    """
+    This class represents Message Catalog.
+    """ 
+
+    message_set: int
+    message_number: int
+    severity: str             # Message, Warning, Error
+    message_text: str = ""
+    explanation: Optional[str] = None
+
+
+@dataclass
+class QueryDefinition:
+
+    """
+    This class represents Query definition.
+    """ 
+
+    name: str
+    query_type: str           # Public, Private, Process, Role
+    sql_text: str = ""
+    description: Optional[str] = None
+
+
+# ============================================================================
+# File Layout
+# ============================================================================
+@dataclass
 class FLSegment:
     record_name: str
     segment_name: str
@@ -113,72 +254,6 @@ class FileLayoutDefinition:
     description: Optional[str] = None
     delimiter: Optional[str] = None
     records: list[FLSegment] = field(default_factory=list)
-
-
-
-@dataclass
-class SQLDefinition:
-    name: str
-    sql_type: str             # SQL Object, View, etc.
-    sql_text: str = ""
-    description: Optional[str] = None
-    
-    def getSQLInfo(self):
-        if self.sql_type == "SQL Object":
-            print (f"  🗂️  SQL Object: {self.name}\n  📄 Description: {self.description}\n  📄 Type: {self.sql_type}\n  📄 SQL Text: {self.sql_text}")
-
-@dataclass
-class PageControl:
-    control_type: str         # EditBox, DropDown, CheckBox, RadioButton, Grid, SubPage, etc.
-    record_name: Optional[str] = None
-    field_name: Optional[str] = None
-    label: Optional[str] = None
-    occurrence: Optional[int] = None
-
-@dataclass
-class MenuDefinition:
-    name: str
-    menu_items: list[dict] = field(default_factory=list)
-    description: Optional[str] = None
-
-@dataclass
-class PeopleCodeEvent:
-    component: str
-    market: str
-    record_name: str
-    field_name: str
-    event_type: str           # FieldDefault, FieldFormula, RowInit, RowInsert, RowDelete,
-                              # SavePreChange, SavePostChange, FieldEdit, FieldChange,
-                              # PrePopup, Activate, ItemSelected, etc.
-    code_type: str           # Record, Component, Component Record, Component Record Field
-    source_code: str = ""
-    # functions: list[str] = field(default_factory=list)
-
-@dataclass
-class PageDefinition:
-    name: str
-    page_type: str            # Standard, Secondary, Popup, etc.
-    #controls: list[PageControl] = field(default_factory=list)
-    description: Optional[str] = None
-
-@dataclass
-class AppPackagePCode:
-    app_package: str = ""
-    code_type: str  ="Application Package PeopleCode"  
-    event: str =""          
-    source_code: str = ""
-    #functions: list[str] = field(default_factory=list)
-
-    def getPeopleCodeInfo(self):
-       print (f"  🗂️  📄 Code Type: {self.code_type}\n PeopleCode Event: {self.app_package} {self.event}\n    📄 Source Code: {self.source_code}")
-
-@dataclass
-class MsgCatalog:
-    message_set: int
-    message_number: int
-    severity: str             # Message, Warning, Error
-    message_text: str = ""
-    explanation: Optional[str] = None
 
 
 # ============================================================================
@@ -230,6 +305,7 @@ class AppEngineProgram:
     aeType: str      # Standard, Daemon, etc.
     disRestart: str
     aetRecords: list[aetRecord] = field(default_factory=list)
+    tempRecords: list[str] = field(default_factory=list)
     sections: list[AppEngineSection] = field(default_factory=list)
     #peoplecode: list[PeopleCodeEvent] = field(default_factory=list)
     #sql: list[SQLDefinition] = field(default_factory=list)
@@ -292,6 +368,21 @@ class serviceOperationDefinition:
     comments: Optional[str] = None    
     uriTemplates: [uriTemplateDefinition] = None
 
+# ============================================================================
+# BI Publisher
+# ============================================================================
+@dataclass
+class BIReportDefinition:
+    name: str
+    description: str = ""
+    data_source: str = ""
+    template_type: str  = ""
+    template_id: str = ""
+    output_format: str = ""
+
+# ============================================================================
+# Main Project Class
+# ============================================================================
 @dataclass
 class PSProject:
 
@@ -315,17 +406,15 @@ class PSProject:
     app_engines: list[AppEngineProgram] = field(default_factory=list)
     msg_catalog: list[MsgCatalog] = field(default_factory=list)
     file_layouts: list[FileLayoutDefinition] = field(default_factory=list)
-    menus: list[MenuDefinition] = field(default_factory=list)    
+    menus: list[MenuDefinition] = field(default_factory=list)
+    permission_lists: list[PermissionListDefinition] = field(default_factory=list)
+    queries: list[QueryDefinition] = field(default_factory=list)
+    bi_reports: list[BIReportDefinition] = field(default_factory=list)
     """    
     components: list[ComponentDefinition] = field(default_factory=list)
-
-
     app_packages: list[AppPackageDefinition] = field(default_factory=list)
-
-    queries: list[QueryDefinition] = field(default_factory=list)
     style_sheets: list[StyleSheetDefinition] = field(default_factory=list)
     roles: list[RoleDefinition] = field(default_factory=list)
-    
     portals: list[PortalDefinition] = field(default_factory=list)
     others: list[GenericDefinition] = field(default_factory=list)
     """
@@ -445,42 +534,83 @@ class PSProject:
                             for field in self._getRecFieldDefinition(recordNameStr_, row):
                                 recordFields.append(field)
 
+                            resultObj = None
+                            if eRecTypeStr == "1" or eRecTypeStr == "4": # Solo obtengo definición SQL para Record Type View y Dynamic View
+                                resultObj = self._getSQLDefinition(recordNameStr_, "2", rootNode_)
+                                
+
                             recordObj = RecordDefinition(
-                                name=recordNameStr_,
-                                record_type=recTypeDescrStr,
-                                fields=recordFields,
-                                description=szRecDescrStr,
-                                parent_record=szParentRecNameStr
+                                name = recordNameStr_,
+                                record_type = recTypeDescrStr,
+                                fields = recordFields,
+                                description = szRecDescrStr,
+                                parent_record = szParentRecNameStr,
+                                sql_view_text = resultObj
                             )
                             return recordObj
         return None
 
+    def _getTranslateValues(self, fieldNameStr_: str, rootNode_) -> list[TranslateValue] | None:
+
+        translateValues = []
+        for instance in rootNode_.iter("instance"):            
+            if instance.get("class") == "XTM":
+                xlatNode = instance.find(".//rowset[@name='XtmDefn']")
+                if xlatNode is not None:
+                    for xlatRow in xlatNode.findall("row"):
+                        fieldNameStr = xlatRow.findtext("szFieldName", default="").strip()
+                        if fieldNameStr == fieldNameStr_:
+                            xlatNodeValues = xlatRow.find(".//hFvt/rowset[@name='XtmValue']")
+                            if xlatNodeValues is not None:
+                                for xlatValueRow in xlatNodeValues.findall("row"):
+                                    fieldValueStr = xlatValueRow.findtext("szFieldValue", default="").strip()
+                                    longNameStr = xlatValueRow.findtext("szLongName", default="").strip()
+                                    shortNameStr = xlatValueRow.findtext("szShortName", default="").strip()
+                                    effDateStr = xlatValueRow.findtext("szEffDt", default="").strip()
+                                    effStatusStr = xlatValueRow.findtext("cEffStatus", default="").strip()
+
+                                    translateValueObj = TranslateValue(
+                                        value = fieldValueStr,
+                                        long_name = longNameStr,
+                                        short_name = shortNameStr,
+                                        effective_date = effDateStr,
+                                        status = effStatusStr
+                                    )
+                                    translateValues.append(translateValueObj)
+                                return translateValues
+        return None
+
     def _getFieldDefinition(self, fieldNameStr_: str, rootNode_) -> FieldDefinition | None:
 
+        xlatDict = []
         for instance in rootNode_.iter("instance"):            
             if instance.get("class") == "FIELD":         
                 fieldNode = instance.find(".//rowset[@name='Field']")
 
                 if fieldNode is not None:
-                    for row in fieldNode.findall("row"):
-                        szFieldNameStr = row.findtext("szFieldName", default="").strip()
+                    for fieldRow in fieldNode.findall("row"):
+                        szFieldNameStr = fieldRow.findtext("szFieldName", default="").strip()
                                                     
                         if szFieldNameStr == fieldNameStr_:
-                            eFieldTypeStr = row.findtext("eFieldType", default="").strip()
+                            eFieldTypeStr = fieldRow.findtext("eFieldType", default="").strip()
                             fieldTypeDescrStr = helpers.getFieldTypeDescription(eFieldTypeStr)
-                            atmShortNameStr = row.findtext("atmShortName", default="").strip() 
-                            atmLongNameStr = row.findtext("atmLongName", default="").strip() 
-                            nLengthStr = row.findtext("nLength", default="").strip()
-                            nDecimalPosStr = row.findtext("nDecimalPos", default="").strip()
-
+                            nLengthStr = fieldRow.findtext("nLength", default="").strip()
+                            nDecimalPosStr = fieldRow.findtext("nDecimalPos", default="").strip()                            
+                            shorNameStr = fieldRow.findtext("szShortName", default="").strip() 
+                            longNameStr = fieldRow.findtext("szLongName", default="").strip() 
+                            
+                            xlatDict = self._getTranslateValues(fieldNameStr_, rootNode_)
+        
                             fieldObj = FieldDefinition(
-                                name=fieldNameStr_,
-                                field_type=fieldTypeDescrStr,
-                                length=nLengthStr,
-                                decimals=nDecimalPosStr,
-                                long_name=atmLongNameStr,
-                                short_name=atmShortNameStr,
-                                description=atmShortNameStr,
+                                name = fieldNameStr_,
+                                field_type = fieldTypeDescrStr,
+                                length = nLengthStr,
+                                decimals = nDecimalPosStr,
+                                # labelid = labelIDstr,
+                                long_name = longNameStr,
+                                short_name = shorNameStr,
+                                # description = atmShortNameStr,
+                                translate_values = xlatDict
                             )
 
                             return fieldObj
@@ -619,7 +749,8 @@ class PSProject:
                                     sqlTypeStr = "SQL Object"        
                                 case "1": # Application Engine SQL
                                     sqlTypeStr = "Application Engine SQL"
-
+                                case "2": # SQL View
+                                    sqlTypeStr = "SQL View"
                             # debug print (f"Debug SQL: szSQLText={szSQLTextStr}")
 
                             sqlDefnObj = SQLDefinition(
@@ -748,15 +879,20 @@ class PSProject:
                         szObjectValue_2Str = pcRow.findtext("szObjectValue_2", default="").strip()
                         szObjectValue_3Str = pcRow.findtext("szObjectValue_3", default="").strip()
 
+                        #print("------")
+                        #print(f"Debug App Package PeopleCode: packageNameStr_={packageNameStr_}, objectValue1_={objectValue1_}, objectValue2_={objectValue2_}, objectValue3_={objectValue3_}")
+                        #print(f"Debug App Package PeopleCode: szObjectValue_0={szObjectValue_0Str}, szObjectValue_1={szObjectValue_1Str}, szObjectValue_2={szObjectValue_2Str}, szObjectValue_3={szObjectValue_3Str}")
                         if szObjectValue_0Str == packageNameStr_ and szObjectValue_1Str == objectValue1_ and szObjectValue_2Str == objectValue2_ and szObjectValue_3Str == objectValue3_:
-
+                            
                             peopleCodeText = instance.find(".//peoplecode_text")       
 
                             eventTypeStr = f"{packageNameStr_}:{objectValue1_}"
                             if objectValue2_ != " ":
                                 eventTypeStr=f"{packageNameStr_}:{objectValue1_}:{objectValue2_}"
-                                if objectValue3_ != " ":
+                                if objectValue3_ != "OnExecute":
                                     eventTypeStr=f"{packageNameStr_}:{objectValue1_}:{objectValue2_}:{objectValue3_}"
+                                else:
+                                    eventTypeStr=f"{packageNameStr_}:{objectValue1_}:{objectValue2_}.{objectValue3_}"
 
                             pcEventObj = AppPackagePCode(
                                 app_package=packageNameStr_,
@@ -843,6 +979,8 @@ class PSProject:
         disableRestartStr = ""
         aeDescrStr = ""
         aetDict = []
+        tempDict = []
+        aeSectionDict = []
         
         for instance in rootNode_.iter("instance"):
             
@@ -873,9 +1011,16 @@ class PSProject:
                                         name = aetRecStr,                    
                                         defRecord = aetDefStr
                                     )
-                                aetDict.append(aetObj)
+
+                                    aetDict.append(aetObj)
 
                             # Faltan obtener los Temporary Tables                            
+                            tmpNode = aeDefNode.find(".//lpTempTblList/rowset[@name='AeTempTbl']")
+                            if tmpNode is not None:
+                                for tmpRow in tmpNode.findall("row"):
+                                    tmpRecStr = tmpRow.findtext("szRecName", default="").strip()
+
+                                    tempDict.append(tmpRecStr)
 
                 returnObjectBool = True
         
@@ -905,8 +1050,8 @@ class PSProject:
                                         aeStepsDict = []
                                         
                                         for aeStepRow in aeStepNode.findall("row"):
-                                            stepDict = []
                                             stepsStr = ""
+                                            stepDict = []
                                             aeStepNameStr = aeStepRow.findtext("szStep", default="").strip()
                                             
                                             # Do Actions Step (Do While, Do When, Do Select, Do Until).
@@ -914,8 +1059,9 @@ class PSProject:
                                             if sqlNode is not None:
                                                 for sqlRow in sqlNode.findall("row"):
                                                     sqlIDStr = sqlRow.findtext("szSqlId", default="").strip()                                                    
-            
+                                                    
                                                     sqlObj = self._getSQLDefinition(sqlIDStr, "1", rootNode_) # 1 means Application Engine SQL
+                                                    
                                                     if sqlObj is not None:
                                                         
                                                         stepActionObj = AeStepAction(
@@ -923,7 +1069,7 @@ class PSProject:
                                                             description = sqlObj.description,
                                                             sql = sqlObj
                                                         )
-
+                                                        # print(f"Debug Do When SQL: sqlID={sqlIDStr}: sqlText={sqlObj.sql_text}")    
                                                         stepDict.append(stepActionObj)
 
                                             sqlNode = aeStepRow.find("lpAeStmtSelect/rowset[@name='AeStmtWhen']")                                                    
@@ -931,14 +1077,16 @@ class PSProject:
                                                 for sqlRow in sqlNode.findall("row"):
                                                     sqlIDStr = sqlRow.findtext("szSqlId", default="").strip()
                                                     sqlObj = self._getSQLDefinition(sqlIDStr, "1", rootNode_) 
-                                                     
+                                                    
                                                     if sqlObj is not None:
                                                         stepActionObj = AeStepAction(
                                                             action_type = "Do Select",
                                                             description = sqlObj.description,
                                                             sql = sqlObj
                                                         )
-                                                    stepDict.append(stepActionObj)
+                                                        # print(f"Debug Do Select SQL: sqlID={sqlIDStr}: sqlText={sqlObj.sql_text}")
+                                                        
+                                                        stepDict.append(stepActionObj)
 
                                             # ============== PeopleCode Step ==============
                                             pcodNode = aeStepRow.find("lpAePcode/rowset[@name='AePcode']")
@@ -986,6 +1134,7 @@ class PSProject:
                                                 # print(f"Debug Call Section: callApp={callAppStr}, callSection={callAppSectStr}")
                                                 stepDict.append(stepActionObj)
                                             
+                                            # print(f"Debug Section: {sectionNameStr} , Step: {aeStepNameStr}, actions count: {len(stepDict)}")
                                             aStepsObj = AppEngineSteps(
                                                 section_name = sectionNameStr,
                                                 program_name = appEngineStr_,
@@ -1007,6 +1156,7 @@ class PSProject:
                 name = appEngineStr_,
                 aeType = aeTypeStr,
                 aetRecords = aetDict,
+                tempRecords = tempDict,
                 sections =  aeSectionDict,
                 disRestart = disableRestartStr,
                 description = aeDescrStr,
@@ -1101,6 +1251,27 @@ class PSProject:
                         return fileLayoutObj
         return None
 
+    def _getQueryDefinition(self, queryNameStr_: str, rootNode_) -> QueryDefinition | None:
+        for instance in rootNode_.iter("instance"):            
+            if instance.get("class") == "QDM":         
+                queryNode = instance.find(".//rowset[@name='QdmDefn']")
+
+                if queryNode is not None:
+                    for queryRow in queryNode.findall("row"):
+                        szQryNameStr = queryRow.findtext("szQryName", default="").strip()
+
+                        if szQryNameStr == queryNameStr_:
+                            szDescrStr = queryRow.findtext("szDescr", default="").strip() 
+
+                            psQueryObj = QueryDefinition(
+                                name = queryNameStr_,
+                                query_type = "pending",     # Public, Private... No sé en qué campo está
+                                sql_text = "pending",       # Esto se obtiene procesando los nodos de QdmDefn
+                                description = szDescrStr
+                            )
+                            return psQueryObj
+        return None
+
     def _getMenuDefinition(self, menuNameStr_: str, rootNode_) -> MenuDefinition | None:
         for instance in rootNode_.iter("instance"):            
             if instance.get("class") == "MDM":         
@@ -1118,11 +1289,93 @@ class PSProject:
                                 description = szDescrStr
                             )
 
-                            # Podría traer todos los ítems del menú
-
                             return menuDefnObj
         return None
 
+    def _getPermissionList(self, permissionListStr_: str, rootNode_) -> PermissionListDefinition | None:
+
+        for instance in rootNode_.iter("instance"):            
+            if instance.get("class") == "CLM":         
+                plNode = instance.find(".//rowset[@name='ClmDefn']")
+
+                if plNode is not None:
+                    for plRow in plNode.findall("row"):
+                        permListStr = plRow.findtext("szClassId", default="").strip()  
+                        descrStr = plRow.findtext("szClassDefnDescr", default="").strip()
+
+                        itemsDict = []
+                        """
+                        if permListStr == permissionListStr_:                           
+                            plAuthItemNode = plNode.find(".//hAit/rowset[@name='ClmAuthItem']")
+
+                            
+                            for plAuthItemRow in plAuthItemNode.findall("row"):
+                                authMenuStr = plAuthItemRow.findtext("atmMenuName", default="").strip()
+                                authBarStr = plAuthItemRow.findtext("atmBarName", default="").strip()
+                                authBarItemStr = plAuthItemRow.findtext("atmBarItemName", default="").strip()
+                                authPnlItemStr = plAuthItemRow.findtext("atmPnlItemName", default="").strip()
+                                displayOnlyStr = plAuthItemRow.findtext("bDisplayOnly", default="").strip()
+                                authFlagsStr = plAuthItemRow.findtext("wAuthorizedActions", default="").strip()
+                                
+                                authItemObj = MenuDefinitionSec(
+                                    name = authMenuStr,
+                                    barName = authBarStr,
+                                    barItemName = authBarItemStr,
+                                    pnlItemName = authPnlItemStr,
+                                    displayOnly = displayOnlyStr,
+                                    authFlags = authFlagsStr  
+                                )
+                                
+                                itemsDict.append(authItemObj)
+                            """
+                        permListObj = PermissionListDefinition(
+                            name = permissionListStr_,
+                            description = descrStr,
+                            menu_items = itemsDict
+                        )
+                        return permListObj
+        return None
+
+    def _getBIReportDefinition(self, reportNameStr_: str, rootNode_) -> BIReportDefinition | None:
+        for instance in rootNode_.iter("instance"):            
+            if instance.get("class") == "XRRDM":         
+                reportNode = instance.find(".//rowset[@name='ReportDefn']")
+
+                if reportNode is not None:
+                    for reportRow in reportNode.findall("row"):
+                        szReportNameStr = reportRow.findtext("szReport_defn_id", default="").strip()
+                                                    
+                        if szReportNameStr == reportNameStr_:
+                            rptDescrStr = reportRow.findtext("szDescr", default="").strip() 
+                            dataSrcStr = reportRow.findtext("szDs_type", default="").strip() #XML, PSQUERY
+                            dataSrcID = reportRow.findtext("szDs_id", default="").strip() 
+                            templateStr = reportRow.findtext("szTemplate_type", default="").strip()
+
+                            # Only default output format.
+                            outputNode = reportRow.find(".//pXprptoutfmt/rowset[@name='OutFormat']")
+                            if outputNode is not None:
+                                for outputRow in outputNode.findall("row"):
+                                    if outputRow.findtext("cIs_default", default="").strip() == "Y":
+                                        outputFormatStr = outputRow.findtext("szFormat_type", default="").strip()
+                            
+                            # Only default template.
+                            tmpltNode = reportRow.find(".//pXprpttmplt/rowset[@name='RptTmpl']")
+                            if tmpltNode is not None:
+                                for tmpltRow in tmpltNode.findall("row"):
+                                    if tmpltRow.findtext("cIs_default", default="").strip() == "Y":
+                                        templateStr = tmpltRow.findtext("szTemplate_id", default="").strip()
+
+                            reportDefnObj = BIReportDefinition(
+                                name = reportNameStr_,
+                                description = rptDescrStr,
+                                data_source = dataSrcStr,
+                                template_type = templateStr,
+                                template_id = templateStr,
+                                output_format = outputFormatStr
+                            )
+
+                            return reportDefnObj
+        return None
 
     def _describeItems(self, objectTypeNode_, objectValue0_, objectValue1_, objectValue2_, objectValue3_, objectValue4_, rootNode_):
 
@@ -1163,6 +1416,11 @@ class PSProject:
                 resultObj = self._getEventPeopleCode(objectValue0_, objectValue1_, objectValue2_, objectValue3_, objectValue4_, "REC", rootNode_)
                 if resultObj is not None:
                     self.peoplecode.append(resultObj)
+            case "10":                    
+                # PS Query
+                resultObj = self._getQueryDefinition(objectValue0_, rootNode_)
+                if resultObj is not None:
+                    self.queries.append(resultObj)
             case "14":
                 print(f"📄 Message Catalog: {objectValue0_}" )                
             case "20":
@@ -1216,13 +1474,19 @@ class PSProject:
                 objectValue3Str_, objectValue4Str_ = objectValue3_.split()
                 resultObj = self._getEventPeopleCode(objectValue0_, objectValue1_, objectValue2_, objectValue3Str_, objectValue4Str_, "CRF", rootNode_)
                 if resultObj is not None:
-                    self.peoplecode.append(resultObj)            
+                    self.peoplecode.append(resultObj)
+            case "53":
+                resultObj = self._getPermissionList(objectValue0_, rootNode_)
+                if resultObj is not None:
+                    self.permission_lists.append(resultObj)
+                #print(f"Permission list?: {objectValue0_}")         
             case "54":
-                print(f"📄 Activity Guide: {objectValue0_}")
+                print(f"📄 Activity Guide?: {objectValue0_}")
             case "58":                
                 if objectValue3_ =="":
-                    print(f"📄 ¿qué es esto?: {objectValue0_}:{objectValue1_}:{objectValue2_}:{objectValue3_}")
-                    print ("pendiente escribir código")
+                    resultObj = self._getAppPackagePeopleCode(objectValue0_, objectValue1_, objectValue2_, "OnExecute", rootNode_)
+                    if resultObj is not None:
+                        self.ap_peoplecode.append(resultObj)
                 elif objectValue3_ != "":
                     resultObj = self._getAppPackagePeopleCode(objectValue0_, objectValue1_, objectValue2_, objectValue3_, rootNode_)
                     if resultObj is not None:
@@ -1233,7 +1497,12 @@ class PSProject:
                 # Definición de Service Operation
                 resultObj = self._getServiceOpDef(objectValue0_, rootNode_)
                 if resultObj is not None:
-                    self.service_operations.append(resultObj)            
+                    self.service_operations.append(resultObj)
+            case "86":
+                resultObj = self._getBIReportDefinition(objectValue0_, rootNode_)
+                if resultObj is not None:
+                    self.bi_reports.append(resultObj)
+                print(f"BI Publisher {objectValue0_}")
             case "104":
                 print(f"📄 Query: {objectValue0_}")
             case "116":

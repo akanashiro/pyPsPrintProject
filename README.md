@@ -4,13 +4,22 @@ This application helps you to document those PeopleSoft projects exported to a f
 It extracts the definitions found in XML file and loaded them into classes so they can be browsed and dump them into a text file (.md or .docx)
 
 ## Definitions that work
-* Record Definition
-* Field Definition
+* Field:
+  * Field Definition
+  * Translate values
+* Record:
+  * Record Definition
+  * Record PeopleCode
+  * SQL View for Views
 * Page Definition
 * Process Definition
 * Job Definition
 * SQL Object
-* Record PeopleCode
+* File Layout
+* PS Query
+* BI Publisher Reports
+* Message Catalog
+* Menu
 * Component PeopleCode
 * Component Record Field PeopleCode
 * Application Package PeopleCode
@@ -20,31 +29,40 @@ It extracts the definitions found in XML file and loaded them into classes so th
     * Do Select
     * Do When
   * Call Section
-* Message Catalog
-* File Layout
+* Permission Lists
 
-## What partially works
-* Only REST Service Operation
-* Menu doesn't show BarItem + BarPanel yet
+## What partially works but still functional
+* Those projects that may contain the name object definition but definition is empty, may not show all information.
+* Some definitions are processed nested. Eg: xlat depends on Field parent definition. If that parent definition is not present in project file, it may not be shown.
+* Only REST Service Operation.
+* Permission Lists: I don't retrieve menu.comp.pages security because the list could be very long
+* Application Engine Step.actions are nested, thus if you don't include the Application Engine Section that contains the action.step, they may not be be shown.
+
 
 ## To-do
+* Update Markdown version 
+* PS Query:
+  * What is the tag that defines a query is public or private?
+  * build SQL from "QdmDefn" rowset
+* File Layout: couldn't get the tag that defines the output file format. Maybe "eFormat"?
+* Message Catalog: couldn't get long explanation
+* Menu: it doesn't show BarItem + BarPanel yet
 * Components
 * Component PeopleCode
 * Translate values
-* File Layouts
 * Application Engine:
   * Other SQL events
   * Temporary Table list
 * Remaining definitions found in the XML file
-* Message Catalog long explanation
+* BI Publisher Report: list template files
 * Roles
-* Permission Lists
 * Content Reference
 * Application Package
 * Index
-* File Layout: I couldn't figure out which tag is the output file format. Maybe "eFormat"?
+* Maybe I can get the upgrade action through "eUpgradeAction" tag.
 
-## Won't work
+
+## Won't do
 * PeopleCode Menu
 * Other objects like CSS styles or icons
 
@@ -78,6 +96,9 @@ You must open the XML file and add <root> tag before <instance> and the end of t
       ...
 </root>
 ```
+
+### Language
+I haven't considered any other language rather than English.
 
 ### Application could break in certain scenarios:
 There are some projects that could crash the applications like those with object definitions but the object is empty.

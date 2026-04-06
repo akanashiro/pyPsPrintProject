@@ -133,8 +133,8 @@ def build_context(project: "PSProject", output_format: str) -> dict:
             "flags": ", ".join(flags) if flags else "—",
             "default_value": rf.default_value or "",
             "label": rf.label or "",
-            # "translate_values": [xv_to_dict(x) for x in rf.translate_values],
-            # "has_xlat": bool(rf.translate_values),
+           # "translate_values": [xv_to_dict(x) for x in rf.translate_values],
+           # "has_xlat": bool(rf.translate_values),
         }
 
     """ 
@@ -231,7 +231,6 @@ def build_context(project: "PSProject", output_format: str) -> dict:
                         rt.add("\a")
                 return  rt
 
-
     def ae_step_actions(action):
         #print(f"Action type: {action.action_type}")
         #print(f"PeopleCode: {action.peoplecode}")
@@ -271,6 +270,7 @@ def build_context(project: "PSProject", output_format: str) -> dict:
     # --- Records ---
     records = []
     for r in project.records:
+        
         rec_dict = {
             "name": r.name,
             "record_type": r.record_type,
@@ -278,9 +278,9 @@ def build_context(project: "PSProject", output_format: str) -> dict:
             "parent_record": r.parent_record or "",
             "fields": [rf_to_dict(f) for f in r.fields],
             "field_count": len(r.fields),
-            "has_sql_view": bool(r.sql_view_text),
+            #"has_sql_view": bool(r.sql_view_text),
             "sql_view_text": r.sql_view_text or "",
-            "is_view": r.record_type in ("SQL View", "Dynamic View", "Query View"),
+            "is_view": bool(r.record_type in ("View", "Dynamic View", "Query View")),
             "is_derived": r.record_type == "Derived/Work",
         }
         records.append(rec_dict)
@@ -295,10 +295,10 @@ def build_context(project: "PSProject", output_format: str) -> dict:
             "decimals": f.decimals or "",
             "long_name": f.long_name or "",
             "short_name": f.short_name or "",
-            "description": f.description or ""
-            #"translate_values": [xv_to_dict(x) for x in f.translate_values],
-            #"has_xlat": bool(f.translate_values),
-            #"xlat_count": len(f.translate_values),
+            #"description": f.description or ""
+            "translate_values": [xv_to_dict(x) for x in f.translate_values] if f.translate_values else [],
+            "has_xlat": bool(f.translate_values) if f.translate_values else [],
+            "xlat_count": len(f.translate_values) if f.translate_values else "0",
         })
 
     # --- SQL Objects ---
@@ -312,6 +312,15 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         for s in project.sql_objects
     ]
 
+    # --- Permission lists ---
+    permission_lists = [
+        {
+            "name": pl.name,
+            "description": pl.description or "",
+            "menu_items": pl.menu_items,
+        }
+        for pl in project.permission_lists
+    ]
 
     # --- Pages ---
     pages = [
@@ -335,6 +344,19 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         for p in project.pages
     ]
 
+    # --- BI Publisher Reports ---
+    bi_reports = [
+        {
+            "name": r.name,
+            "description": r.description,
+            "data_source": r.data_source,
+            "template_type": r.template_type,
+            "template_id": r.template_id,
+            "output_format": r.output_format,
+        }
+        for r in project.bi_reports
+    ]
+
     # --- File Layouts ---
     file_layouts = [
         {
@@ -345,6 +367,17 @@ def build_context(project: "PSProject", output_format: str) -> dict:
             "records": fl.records,
         }
         for fl in project.file_layouts
+    ]
+
+    # --- Queries ---
+    queries = [
+        {
+            "name": q.name,
+            "query_type": q.query_type,
+            "description": q.description or "",
+            "sql_text": q.sql_text,
+        }
+        for q in project.queries
     ]
 
     # --- Menus ---
@@ -366,6 +399,7 @@ def build_context(project: "PSProject", output_format: str) -> dict:
             "description": ae.description or "",
             "disRestart": ae.disRestart,
             "aetRecords": ae.aetRecords,
+            "tempRecords": ae.tempRecords,
             "sections": [ae_section_to_dict(s) for s in ae.sections],
             #"sections": ae.sections,
             "section_count": len(ae.sections),
@@ -494,10 +528,13 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         "app_engines":       len(app_engines),
         "service_operations":len(service_operations),
         "msg_catalog":       len(msg_catalog),
-        "file_layouts":      len(file_layouts),        
+        "file_layouts":      len(file_layouts),
+        "permission_lists":  len(permission_lists),
+        "queries":           len(queries),
+        "bi_reports":        len(bi_reports),
         "total":             sum([
             len(records), len(fields),len(project.pages), len(sql_objects), len(processes), len(jobs), len(project.peoplecode), len(ap_peoplecode_grp), \
-            len(service_operations), len(app_engines), len(msg_catalog), len(file_layouts), len(menus)]
+            len(service_operations), len(app_engines), len(msg_catalog), len(file_layouts), len(menus), len(permission_lists), len(queries), len(bi_reports)]
         )
     }
 
@@ -523,7 +560,10 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         "ap_peoplecode_grp":  ap_peoplecode_grp,
         "service_operations": service_operations,
         "msg_catalog":        msg_catalog,
-        "file_layouts":       file_layouts        
+        "file_layouts":       file_layouts,
+        "permission_lists":   permission_lists,
+        "queries":            queries,
+        "bi_reports":         bi_reports,
     }
 
 
