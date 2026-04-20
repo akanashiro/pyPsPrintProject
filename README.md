@@ -6,7 +6,7 @@ It extracts the most common definitions found in XML file and loaded them into c
 It uses a Jinja2 template to render variables in a Word document, so you can customize or create a new document using the same variables.
 
 **Note:**
-1. This is my hobbyist project I have written for fun in my spare time, so it is not 100% complete. Expect some rough edges.
+1. This is my hobbyist project I have written for fun in my spare time, so it is not 100% complete. Expect some rough edges. Use it at your own risk!
 2. PeopleSoft is a product I love and I am releasing this application under the MIT license and the entire PeopleSoft community can benefit from this tool. Would be great if somebody fork it and improves it or creates a GUI.
 
 ### First Steps
