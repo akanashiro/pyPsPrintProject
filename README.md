@@ -3,9 +3,59 @@
 This application will help you to document those PeopleSoft projects exported to a file with Application Designer.
 It extracts the most common definitions found in XML file and loaded them into classes so they can be browsed and dump them into a text file (.md or .docx).
 
+It uses a template that uses Jinja2 engine to render variables in a Word document, so you can customize or create a new document using the same variables.
+
 **Note:**
-1. This is my hobbyist project and done in my spare time. Expect some rough edges..
-2. I release this application under MIT license so all the PeopleSoft community could benefit from this tool.
+
+1. This is my hobbyst project I have written for fun in my spare time, so it is not 100% complete. Expect some rough edges.
+2. PeopleSoft is a product I love and I release this application under MIT licenses and all the PeopleSoft community could benefit from this tool.
+
+
+### First Steps
+
+You must install som extra packages
+
+```
+pip install docxtpl python-docx
+```
+
+PeopleSoft XML doesn't come with root tag (don't know why), so you will see something like this.
+```XML
+<?xml version='1.0'?>
+  <!--Warning : Don't edit this file -->
+  <instance class="PJM">
+    <rowset name="PjmDefn" size="2856" count="1">
+      <row>
+```
+
+You must open the XML file and add <root> tag before <instance> and the end of the file.
+```XML
+<?xml version='1.0'?>
+<root>
+  <!--Warning : Don't edit this file -->
+  <instance class="PJM">
+    <rowset name="PjmDefn" size="2856" count="1">
+      <row>
+      ...
+</root>
+```
+
+### Language
+I haven't considered any other language rather than English.
+
+### Application could break in certain scenarios:
+There are some projects that could crash the applications like those with object definitions but the object is empty.
+
+
+## How to run:
+```
+    >> python main.py MyProject.xml --format md [--output MyProject.md]
+    >> python main.py MyProject.xml -f md [-o MyProject.md]
+    >> python main.py MyProject.xml --format docx --template MyTemplate.docx [--output MyProject.docx]
+    >> python main.py MyProject.xml --ft docx -t MyTemplate.docx [-o MyProject.docx]
+```
+
+---
 
 ## Definitions that work
 * Field:
@@ -74,49 +124,3 @@ It extracts the most common definitions found in XML file and loaded them into c
 ## Won't do
 * PeopleCode Menu
 * Other objects like CSS styles or icons
-
-## Warning!!!
-
-### First Steps
-
-You must install som extra packages
-
-```
-pip install docxtpl python-docx
-```
-
-PeopleSoft XML doesn't come with root tag (don't know why), so you will see something like this.
-```XML
-<?xml version='1.0'?>
-  <!--Warning : Don't edit this file -->
-  <instance class="PJM">
-    <rowset name="PjmDefn" size="2856" count="1">
-      <row>
-```
-
-You must open the XML file and add <root> tag before <instance> and the end of the file.
-```XML
-<?xml version='1.0'?>
-<root>
-  <!--Warning : Don't edit this file -->
-  <instance class="PJM">
-    <rowset name="PjmDefn" size="2856" count="1">
-      <row>
-      ...
-</root>
-```
-
-### Language
-I haven't considered any other language rather than English.
-
-### Application could break in certain scenarios:
-There are some projects that could crash the applications like those with object definitions but the object is empty.
-
-
-## How to run:
-```
-    >> python main.py MyProject.xml --format md [--output MyProject.md]
-    >> python main.py MyProject.xml -f md [-o MyProject.md]
-    >> python main.py MyProject.xml --format docx --template MyTemplate.docx [--output MyProject.docx]
-    >> python main.py MyProject.xml --ft docx -t MyTemplate.docx [-o MyProject.docx]
-```
