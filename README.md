@@ -49,6 +49,11 @@ It extracts the most common definitions found in XML file and loaded them into c
 
 
 ## To-do
+* Code
+  * Clean up code
+  * Refactoring
+  * Standardize object naming
+  * Some things are in Spanish, I should translate them to English
 * Improve and complete Markdown rendering 
 * PS Query:
   * What is the tag that defines a query is public or private?
