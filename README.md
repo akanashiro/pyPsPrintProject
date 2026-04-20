@@ -4,7 +4,7 @@ This application will help you to document those PeopleSoft projects exported to
 It extracts the most common definitions found in XML file and loaded them into classes so they can be browsed and dump them into a text file (.md or .docx).
 
 **Note:**
-1. This is my hobbyst project and done in my spare time. Expect some rough edges..
+1. This is my hobbyist project and done in my spare time. Expect some rough edges..
 2. I release this application under MIT license so all the PeopleSoft community could benefit from this tool.
 
 ## Definitions that work
