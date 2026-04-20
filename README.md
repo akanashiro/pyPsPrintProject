@@ -9,7 +9,6 @@ It uses a Jinja2 template to render variables in a Word document, so you can cus
 1. This is my hobbyist project I have written for fun in my spare time, so it is not 100% complete. Expect some rough edges.
 2. PeopleSoft is a product I love and I am releasing this application under the MIT license and the entire PeopleSoft community can benefit from this tool. Would be great if somebody fork it and improves it or creates a GUI.
 
-
 ### First Steps
 
 You must install som extra packages
@@ -54,6 +53,9 @@ There are some projects that could crash the applications like those with object
     >> python main.py MyProject.xml --ft docx -t MyTemplate.docx [-o MyProject.docx]
 ```
 
+
+![](./assets/portada.png)
+
 ---
 
 ## Definitions that work
@@ -88,6 +90,8 @@ There are some projects that could crash the applications like those with object
   * Call Section
   * Log messages
 * Permission Lists
+
+![](./assets/ae.png)
 
 ## What partially works but still functional
 * Those projects that may contain the name object definition but definition is empty, may not show all information.
