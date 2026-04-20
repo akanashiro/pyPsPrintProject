@@ -3,12 +3,11 @@
 This application will help you to document those PeopleSoft projects exported to a file with Application Designer.
 It extracts the most common definitions found in XML file and loaded them into classes so they can be browsed and dump them into a text file (.md or .docx).
 
-It uses a template that uses Jinja2 engine to render variables in a Word document, so you can customize or create a new document using the same variables.
+It uses a Jinja2 template to render variables in a Word document, so you can customize or create a new document using the same variables.
 
 **Note:**
-
-1. This is my hobbyst project I have written for fun in my spare time, so it is not 100% complete. Expect some rough edges.
-2. PeopleSoft is a product I love and I release this application under MIT licenses and all the PeopleSoft community could benefit from this tool.
+1. This is my hobbyist project I have written for fun in my spare time, so it is not 100% complete. Expect some rough edges.
+2. PeopleSoft is a product I love and I am releasing this application under the MIT license and the entire PeopleSoft community can benefit from this tool. Would be great if somebody fork it and improves it or creates a GUI.
 
 
 ### First Steps
