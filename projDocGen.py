@@ -217,11 +217,11 @@ def build_context(project: "PSProject", output_format: str) -> dict:
                     "source_code":  rt,
                 } 
 
-    def convertPc(pc: str, output: str) -> str:
+    def convertPc(pc, output: str) -> str:
 
         match output:
             case "md":
-                return pc.source_code
+                return pc
             case "docx":
                 rt = RichText()
                 lines = pc.split("\n")
@@ -239,7 +239,9 @@ def build_context(project: "PSProject", output_format: str) -> dict:
             "action_type": action.action_type or "",
             "peoplecode":  convertPc(action.peoplecode.source_code, output_format) if action.peoplecode else None,
             "sql": action.sql.sql_text if action.sql else None,
-            "call": action.call or "prueba"
+            "log_message": action.log_message or "",
+            "call": action.call or "prueba",
+            "description": action.description or ""
         }
 
     def ae_step_to_dict(step):
@@ -409,6 +411,22 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         for ae in project.app_engines
     ]    
 
+    # --- Components ---
+    components = [
+        {
+            "name": c.name,
+            "market": c.market,
+            "description": c.description or "",
+            "search_record": c.search_record or "",
+            "add_search_record": c.add_search_record or "",
+            "pages": c.pages,
+            #"records": [comp_rec_to_dict(r) for r in c.records],
+            #"peoplecode": [pc_to_dict(p) for p in c.peoplecode],
+            #"has_peoplecode": bool(c.peoplecode),
+        }
+        for c in project.components
+    ]
+
     # --- Processes ---
     processes = [
         {
@@ -516,6 +534,7 @@ def build_context(project: "PSProject", output_format: str) -> dict:
 
     # --- Resumen / Stats ---
     summary = {
+        "components":        len(components),
         "records":           len(records),
         "fields":            len(fields),   
         "pages":             len(project.pages),
@@ -533,7 +552,7 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         "queries":           len(queries),
         "bi_reports":        len(bi_reports),
         "total":             sum([
-            len(records), len(fields),len(project.pages), len(sql_objects), len(processes), len(jobs), len(project.peoplecode), len(ap_peoplecode_grp), \
+            len(components),len(records), len(fields),len(project.pages), len(sql_objects), len(processes), len(jobs), len(project.peoplecode), len(ap_peoplecode_grp), \
             len(service_operations), len(app_engines), len(msg_catalog), len(file_layouts), len(menus), len(permission_lists), len(queries), len(bi_reports)]
         )
     }
@@ -546,6 +565,7 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         "description":        project.description or "",
         "summary":            summary,
         "has":                has,
+        "components":         components,
         "records":            records,
         "fields":             fields,
         "pages":              pages,
@@ -604,6 +624,7 @@ class MarkdownGenerator:
     def _write(self, lines: list, ctx: dict):
         a = lines.append
 
+        # Portada
         a(f"# Proyecto PeopleSoft: {ctx['project_name']}")
         a("")
         if ctx["description"]:
@@ -617,25 +638,23 @@ class MarkdownGenerator:
         a("|----------------|----------|")
         s = ctx["summary"]
         for label, key in [
+            ("Components",         "components"),
             ("Records",            "records"),
             ("Fields",             "fields"),
             ("Pages",              "pages"),
-            ("Components",         "components"),
-            ("Menus",              "menus"),
-            ("PeopleCode Events",   "peoplecode_events"),
-            ("App Package PeopleCode",  "ap_peoplecode"),
             ("SQL Objects",        "sql_objects"),
+            ("Menus",              "menus"),
+            ("Processes",          "processes"),
+            ("Jobs",               "jobs"),
+            ("PeopleCode Events",  "peoplecode_events"),
+            ("App Package PeopleCode", "ap_peoplecode"),
             ("App Engine Programs","app_engines"),
-            ("App Packages",       "app_packages"),
-            ("Messages",           "messages"),
-            ("Process Definitions","processes"),
-            ("Job Definitions",     "jobs"),
             ("Service Operations", "service_operations"),
-            ("Queries",            "queries"),
-            ("Style Sheets",       "style_sheets"),
-            ("Roles",              "roles"),
+            ("Message Catalog",    "msg_catalog"),
             ("File Layouts",       "file_layouts"),
-            ("Portal Definitions", "portals"),
+            ("Permission Lists",   "permission_lists"),
+            ("Queries",            "queries"),
+            ("BI Reports",         "bi_reports"),
         ]:
             if s.get(key, 0) > 0:
                 a(f"| {label} | {s[key]} |")
@@ -691,11 +710,8 @@ class MarkdownGenerator:
                     a(f"**Nombre Largo:** {fld['long_name']}  ")
                 if fld["short_name"]:
                     a(f"**Nombre Corto:** {fld['short_name']}  ")
-                if fld["description"]:
-                    a(f"**Descripción:** {fld['description']}  ")
                 a("")
 
-                """
                 if fld["has_xlat"]:
                     a(f"#### Translate Values ({fld['xlat_count']} valores)")
                     a("")
@@ -703,8 +719,7 @@ class MarkdownGenerator:
                     a("|-------|-------------|--------------|-------------|--------|")
                     for xv in fld["translate_values"]:
                         a(f"| {xv['value']} | {xv['long_name']} | {xv['short_name']} | {xv['effective_date']} | {xv['status']} |")
-                    a("")                    
-                """
+                    a("")
 
         # Pages
         if ctx["has"]["pages"]:
@@ -717,18 +732,37 @@ class MarkdownGenerator:
                 a(f"**Tipo:** {pg['page_type']}  ")
                 if pg["description"]:
                     a(f"**Descripción:** {pg['description']}  ")
-                """
-                a(f"**Controles:** {pg['control_count']}  ")
                 a("")
-                
-                if pg["controls"]:
-                    a("| Control | Record | Campo | Label |")
-                    a("|---------|--------|-------|-------|")
-                    for ctrl in pg["controls"]:
-                        a(f"| {ctrl['control_type']} | {ctrl['record_name']} | {ctrl['field_name']} | {ctrl['label']} |")
-                    a("")
-                """
 
+        # Components
+        if ctx["has"]["components"]:
+            a("---")
+            a("## Components")
+            a("")
+            for comp in ctx["components"]:
+                a(f"### {comp['name']} ({comp['market']})")
+                a("")
+                if comp["description"]:
+                    a(f"**Descripción:** {comp['description']}  ")
+                if comp["search_record"]:
+                    a(f"**Search Record:** {comp['search_record']}  ")
+                if comp["add_search_record"]:
+                    a(f"**Add Search Record:** {comp['add_search_record']}  ")
+                if comp["pages"]:
+                    a(f"**Páginas:** {', '.join(comp['pages'])}  ")
+                a("")
+
+        # Menus
+        if ctx["has"]["menus"]:
+            a("---")
+            a("## Menus")
+            a("")
+            for m in ctx["menus"]:
+                a(f"### {m['name']}")
+                a("")
+                if m["description"]:
+                    a(f"**Descripción:** {m['description']}  ")
+                a("")
 
         # SQL Objects
         if ctx["has"]["sql_objects"]:
@@ -746,7 +780,6 @@ class MarkdownGenerator:
                 a("```")
                 a("")
 
-
         # Record PeopleCode
         if ctx["peoplecode_groups"]:
             a("---")
@@ -758,9 +791,6 @@ class MarkdownGenerator:
                 for evt in group["events"]:
                     a(f"#### {evt['full_name']}")
                     a("")
-                    #if evt["has_functions"]:
-                    #    a(f"**Funciones definidas:** {', '.join(evt['functions'])}  ")
-                    #    a("")
                     a("```peoplecode")
                     a(evt["source_code"])
                     a("```")
@@ -769,18 +799,15 @@ class MarkdownGenerator:
         # Component PeopleCode
         if ctx["pc_comp_groups"]:
             a("---")
-            a("## Record PeopleCode")
+            a("## Component PeopleCode")
             a("")
             for group in ctx["pc_comp_groups"]:
                 a(f"### Component: {group['component']}")
                 a("")
                 for evt in group["events"]:
                     a(f"#### {evt['full_name']}")
-                    a(f"#### {evt['market']}")
+                    a(f"**Market:** {evt['market']}  ")
                     a("")
-                    #if evt["has_functions"]:
-                    #    a(f"**Funciones definidas:** {', '.join(evt['functions'])}  ")
-                    #    a("")
                     a("```peoplecode")
                     a(evt["source_code"])
                     a("```")
@@ -789,7 +816,7 @@ class MarkdownGenerator:
         # Component Record Field PeopleCode
         if ctx["pc_crf_groups"]:
             a("---")
-            a("## Record PeopleCode")
+            a("## Component Record Field PeopleCode")
             a("")
             for group in ctx["pc_crf_groups"]:
                 a(f"### Component: {group['component']}")
@@ -797,14 +824,10 @@ class MarkdownGenerator:
                 for evt in group["events"]:
                     a(f"#### {evt['full_name']}")
                     a("")
-                    #if evt["has_functions"]:
-                    #    a(f"**Funciones definidas:** {', '.join(evt['functions'])}  ")
-                    #    a("")
                     a("```peoplecode")
                     a(evt["source_code"])
                     a("```")
                     a("")
-
 
         # App Package PeopleCode
         if ctx["ap_peoplecode_grp"]:
@@ -815,12 +838,53 @@ class MarkdownGenerator:
                 a(f"### Application Package: {group['app_package']}")
                 a("")
                 for evt in group["events"]:
-                    a(f"#### {evt['event']}")
-                    a("")                    
+                    a(f"#### {evt['code_type']} - {evt['event']}")
+                    a("")
                     a("```peoplecode")
                     a(evt["source_code"])
                     a("```")
                     a("")
+
+        # Application Engine Programs
+        if ctx["has"]["app_engines"]:
+            a("---")
+            a("## Application Engine Programs")
+            a("")
+            for ae in ctx["app_engines"]:
+                a(f"### {ae['name']}")
+                a("")
+                a(f"**Type:** {ae['aeType']}  ")
+                if ae["description"]:
+                    a(f"**Description:** {ae['description']}  ")
+                a(f"**Disable Restart:** {'Yes' if ae['disRestart'] == 'Y' else 'No'}  ")
+                a(f"**State Records:**")
+                for aet in ae["aetRecords"]:
+                    a(f"Default: {aet.name} - Default: {aet.defRecord}")
+
+                a(f"**Sections:** {ae['section_count']}  ")
+                a("")
+                
+                for sect in ae["sections"]:
+                    a(f"#### Sección: {sect['section_name']}")
+                    a("")
+                    if sect["has_steps"]:
+                        for step in sect["steps"]:
+                            a(f"##### Step: {step['step_name']}")
+                            a("")
+                            for action in step["step_actions"]:
+                                if action["action_type"] == "PeopleCode":
+                                    a("```peoplecode")
+                                    a(action["peoplecode"])
+                                    a("```")
+                                elif action["action_type"] == "Call Section":
+                                    a(f"> **Llama a:** {action['call']}")
+                                elif action["action_type"] == "Log Message":
+                                    a(f"**Mensaje:** {action['log_message']}")
+                                else:
+                                    a("```sql")
+                                    a(action["sql"])
+                                    a("```")
+                            a("")
 
         # Processes
         if ctx["has"]["processes"]:
@@ -835,6 +899,123 @@ class MarkdownGenerator:
                     a(f"**Run Location:** {proc['run_location']}  ")
                 if proc["description"]:
                     a(f"**Descripción:** {proc['description']}  ")
+                a("")
+
+        # Jobs
+        if ctx["has"]["jobs"]:
+            a("---")
+            a("## Job Definitions")
+            a("")
+            for job in ctx["jobs"]:
+                a(f"### {job['jobName']}")
+                a("")
+                if job["jobDescr"]:
+                    a(f"**Descripción:** {job['jobDescr']}  ")
+                if job["processList"]:
+                    a(f"**Procesos:** {', '.join(job['processList'])}  ")
+                a("")
+
+        # Service Operations
+        if ctx["has"]["service_operations"]:
+            a("---")
+            a("## Service Operations")
+            a("")
+            for so in ctx["service_operations"]:
+                a(f"### {so['name']}")
+                a("")
+                a(f"**Método REST:** {so['restMethod']}  ")
+                if so["restBaseUrl"]:
+                    a(f"**Base URL:** {so['restBaseUrl']}  ")
+                if so["description"]:
+                    a(f"**Descripción:** {so['description']}  ")
+                if so["comments"]:
+                    a(f"**Comentarios:** {so['comments']}  ")
+                a("")
+                
+                if so["uriTemplates"]:
+                    a("#### URI Templates")
+                    a("")
+                    for uri in so["uriTemplates"]:
+                        a(f"- **{uri.get('uriSeq', 'N/A')}:** {uri.get('uriTemplate', '')}")
+                    a("")
+
+        # Message Catalog
+        if ctx["has"]["msg_catalog"]:
+            a("---")
+            a("## Message Catalog")
+            a("")
+            a("| Set | Nbr | Severity | Mensaje |")
+            a("|-----|-----|----------|---------|")
+            for msg in ctx["msg_catalog"]:
+                a(f"| {msg['message_set']} | {msg['message_number']} | {msg['severity']} | {msg['message_text']} |")
+            a("")
+
+        # Queries
+        if ctx["has"]["queries"]:
+            a("---")
+            a("## Queries")
+            a("")
+            for q in ctx["queries"]:
+                a(f"### {q['name']}")
+                a("")
+                a(f"**Tipo:** {q['query_type']}  ")
+                if q["description"]:
+                    a(f"**Descripción:** {q['description']}  ")
+                a("")
+                if q["sql_text"]:
+                    a("```sql")
+                    a(q["sql_text"])
+                    a("```")
+                    a("")
+
+        # File Layouts
+        if ctx["has"]["file_layouts"]:
+            a("---")
+            a("## File Layouts")
+            a("")
+            for fl in ctx["file_layouts"]:
+                a(f"### {fl['name']}")
+                a("")
+                a(f"**Tipo:** {fl['file_type']}  ")
+                if fl["delimiter"]:
+                    a(f"**Delimitador:** {fl['delimiter']}  ")
+                if fl["description"]:
+                    a(f"**Descripción:** {fl['description']}  ")
+                if fl["records"]:
+                    a(f"**Records:** {', '.join(fl['records'])}  ")
+                a("")
+
+        # Permission Lists
+        if ctx["has"]["permission_lists"]:
+            a("---")
+            a("## Permission Lists")
+            a("")
+            for pl in ctx["permission_lists"]:
+                a(f"### {pl['name']}")
+                a("")
+                if pl["description"]:
+                    a(f"**Descripción:** {pl['description']}  ")
+                if pl["menu_items"]:
+                    a("**Items:**")
+                    for item in pl["menu_items"]:
+                        a(f"- {item}")
+                a("")
+
+        # BI Reports
+        if ctx["has"]["bi_reports"]:
+            a("---")
+            a("## BI Publisher Reports")
+            a("")
+            for report in ctx["bi_reports"]:
+                a(f"### {report['name']}")
+                a("")
+                if report["description"]:
+                    a(f"**Descripción:** {report['description']}  ")
+                if report["data_source"]:
+                    a(f"**Data Source:** {report['data_source']}  ")
+                a(f"**Tipo de Template:** {report['template_type']}  ")
+                a(f"**Template ID:** {report['template_id']}  ")
+                a(f"**Formato Salida:** {report['output_format']}  ")
                 a("")
 
 # ---------------------------------------------------------------------------

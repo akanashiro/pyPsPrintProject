@@ -1,7 +1,11 @@
 # pyPsPrintProject
 
-This application helps you to document those PeopleSoft projects exported to a file with Application Designer.
-It extracts the definitions found in XML file and loaded them into classes so they can be browsed and dump them into a text file (.md or .docx)
+This application will help you to document those PeopleSoft projects exported to a file with Application Designer.
+It extracts the most common definitions found in XML file and loaded them into classes so they can be browsed and dump them into a text file (.md or .docx).
+
+**Note:**
+1. This is my hobbyst project and done in my spare time. Expect some rough edges..
+2. I release this application under MIT license so all the PeopleSoft community could benefit from this tool.
 
 ## Definitions that work
 * Field:
@@ -20,15 +24,20 @@ It extracts the definitions found in XML file and loaded them into classes so th
 * BI Publisher Reports
 * Message Catalog
 * Menu
-* Component PeopleCode
-* Component Record Field PeopleCode
+* Component:
+  * Component Definition
+  * Component PeopleCode
+  * Component Record Field PeopleCode
 * Application Package PeopleCode
 * Application Engine basic information
   * Application Engine PeopleCode
   * Application Engine SQL
+    * Do While
     * Do Select
     * Do When
+    * Do Until
   * Call Section
+  * Log messages
 * Permission Lists
 
 ## What partially works but still functional
@@ -40,27 +49,22 @@ It extracts the definitions found in XML file and loaded them into classes so th
 
 
 ## To-do
-* Update Markdown version 
+* Improve and complete Markdown rendering 
 * PS Query:
   * What is the tag that defines a query is public or private?
   * build SQL from "QdmDefn" rowset
 * File Layout: couldn't get the tag that defines the output file format. Maybe "eFormat"?
 * Message Catalog: couldn't get long explanation
 * Menu: it doesn't show BarItem + BarPanel yet
-* Components
-* Component PeopleCode
+* Component Record PeopleCode
 * Translate values
-* Application Engine:
-  * Other SQL events
-  * Temporary Table list
-* Remaining definitions found in the XML file
 * BI Publisher Report: list template files
 * Roles
 * Content Reference
-* Application Package
-* Index
+* Application Package definition
+* Indices
 * Maybe I can get the upgrade action through "eUpgradeAction" tag.
-
+* Remaining definitions found in the XML file...
 
 ## Won't do
 * PeopleCode Menu
@@ -111,8 +115,3 @@ There are some projects that could crash the applications like those with object
     >> python main.py MyProject.xml --format docx --template MyTemplate.docx [--output MyProject.docx]
     >> python main.py MyProject.xml --ft docx -t MyTemplate.docx [-o MyProject.docx]
 ```
-
-
-**Note:**
-1. This is my hobbyst project and done in my spare time. Expect some rough edges..
-2. I release this application under MIT license so all the PeopleSoft community could benefit from this tool.
