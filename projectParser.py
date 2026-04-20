@@ -962,7 +962,7 @@ class PSProject:
                                                     
                         if szOperationnameStr == serviceOpDefStr_:
                             versionStr = servOpRow.findtext("szDefaultversion", default="").strip()
-                            restMethodStr = servOpRow.findtext("szRestmethod", default="").strip()
+                            restMethodStr = servOpRow.findtext("szRestmethod", default="").strip()  
                             szDescrStr = servOpRow.findtext("szDescr", default="").strip() 
                             operDescrStr =  servOpRow.findtext("lpszDescrlong", default="").strip()
                             restBaseUrlStr = servOpRow.findtext("szRestBaseurl", default="").strip()
@@ -981,16 +981,16 @@ class PSProject:
                                     uriTemplateArray.append(uriTemplateObj)
                                     # print(f"{uriTemplateStr}")
 
-                        serviceOperObj = serviceOperationDefinition(
-                            name = serviceOpDefStr_,
-                            restMethod = restMethodStr,
-                            description = szDescrStr,
-                            comments = operDescrStr,
-                            restBaseUrl = restBaseUrlStr,
-                            uriTemplates = uriTemplateArray
-                        )
+                            serviceOperObj = serviceOperationDefinition(
+                                name = serviceOpDefStr_,
+                                restMethod = restMethodStr,
+                                description = szDescrStr,
+                                comments = operDescrStr,
+                                restBaseUrl = restBaseUrlStr,
+                                uriTemplates = uriTemplateArray
+                            )
                         
-                        return serviceOperObj
+                            return serviceOperObj
         return None
 
 
