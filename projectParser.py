@@ -478,7 +478,7 @@ class PSProject:
                 isSearchKeyBool = False
                 isFromSrchBool = False
 
-                if 0 in decodeResultArray['bits']:
+                if 1 in decodeResultArray['bits']:
                     isKeyBool = True
 
                 if 2 in decodeResultArray['bits']:
@@ -490,7 +490,7 @@ class PSProject:
                 if 16 in decodeResultArray['bits']:
                     isAlternateBool = True
 
-                if 3 in decodeResultArray['bits']:
+                if 32 in decodeResultArray['bits']:
                     isLitBoxBool = True
 
                 if 256 in decodeResultArray['bits']:
