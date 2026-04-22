@@ -421,12 +421,6 @@ The project is freely available for commercial, personal and educational use.
 
 ---
 
-## 📞 Support and Contact
-
-- **Issues and bugs**: Open issue on GitHub
-- **Questions**: GitHub Discussions
-- **Author**: akanashiro@gmail.com
-
 ## 🙏 Acknowledgments
 
 - Partners at work
@@ -438,4 +432,7 @@ The project is freely available for commercial, personal and educational use.
 Not 100% functional but usable.
 
 **Planned future improvements:**
+- [ ] Standardize code
+- [ ] Refactoring
+- [ ] Automate ```<root>``` tag addition to XML
 - [ ] GUI (graphical interface)
