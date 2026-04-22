@@ -267,8 +267,9 @@ file.md or file.docx
 |---|---|---|
 | **CSS Styles** | Not relevant for documentation | Document manually |
 | **Icons** | Not relevant for documentation | Document manually |
-| **Roles** | Not implemented yet | Contribution welcome! |
-| **Content Reference** | Not implemented yet | Contribution welcome! |
+| **Component Record PeopleCode | Not implemented yet | Document manually  |
+| **Roles** | Not implemented yet | Document manually  |
+| **Content Reference** | Not implemented yet | Document manually |
 
 ## ⚠️ Known Limitations
 
