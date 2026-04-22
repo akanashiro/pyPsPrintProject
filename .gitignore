@@ -4,3 +4,5 @@ __pycache__/
 /*.md
 /*.docx
 /*.doc
+/*.xml
+!README.md

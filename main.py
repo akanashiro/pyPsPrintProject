@@ -53,7 +53,7 @@ def main():
         sys.exit(1)
 
     if args.template and not Path(args.template).exists():
-        print(f"❌ Error: No se encontró la plantilla: {args.plantilla}", file=sys.stderr)
+        print(f"❌ Error: No se encontró la plantilla: {args.template}", file=sys.stderr)
         sys.exit(1)
 
     # Salida base

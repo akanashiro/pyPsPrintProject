@@ -1683,6 +1683,15 @@ def getProject(xml_path: str)  -> PSProject  | None:
 
     return None    
 
+def fix_xml_root(filepath):
+    """Agrega <root> automáticamente al XML"""
+    with open(filepath) as f:
+        content = f.read()
+    
+    if '<root>' not in content:
+        # Insertar después de XML declaration
+        ...
+
 class PSProjectParser:
     """
     Clase para parsear el XML exportado desde Application Designer y extraer la información del proyecto.

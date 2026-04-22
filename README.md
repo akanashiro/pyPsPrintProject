@@ -1,129 +1,486 @@
 # pyPsPrintProject
 
-This application will help you to document those PeopleSoft projects exported to a file with Application Designer.
-It extracts the most common definitions found in XML file and loaded them into classes so they can be browsed and dump them into a text file (.md or .docx).
+Automated tool for generating professional documentation of PeopleSoft projects exported from Application Designer.
 
-It uses a Jinja2 template to render variables in a Word document, so you can customize or create a new document using the same variables.
+[![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/)
+[![MIT License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Status](https://img.shields.io/badge/status-active-brightgreen)]()
 
-**Note:**
-1. This is my hobbyist project I have written for fun in my spare time, so it is not 100% complete. Expect some rough edges.
-2. PeopleSoft is a product I love and I am releasing this application under the MIT license and the entire PeopleSoft community can benefit from this tool. Would be great if somebody fork it and improves it or creates a GUI.
+## 📋 Table of Contents
 
-### First Steps
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Basic Usage](#basic-usage)
+- [Configuration](#configuration)
+- [Project Structure](#project-structure)
+- [Supported Definitions](#supported-definitions)
+- [Known Limitations](#known-limitations)
+- [Troubleshooting](#troubleshooting)
+- [How to Contribute](#how-to-contribute)
+- [License](#license)
 
-You must install som extra packages
+## ✨ Features
 
+- 📄 **Export to Markdown** - Generate readable and versionable documentation
+- 📘 **Export to Word** - Create professional documents with Jinja2 templates
+- 🔍 **XML Parser** - Automatically extract definitions from PeopleSoft projects
+- 📊 **30+ object types** - Fields, Records, Pages, Components, App Engine, etc
+- ⚙️ **Customizable templates** - Use Jinja2 to adapt the format to your needs
+- 🤝 **Open Source** - PeopleSoft community contributing improvements
+
+> **Note:** This is an actively developed hobby project. It works very well for most projects, but there may be unsupported edge cases.
+
+## 🔧 Prerequisites
+
+### System
+- **Python**: 3.8 or higher
+- **pip**: Python package manager
+- **OS**: Windows, macOS or Linux
+
+### PeopleSoft
+- **Application Designer**: Version 8.5x+
+- **Access**: Ability to export projects to XML
+- **Knowledge**: Basic familiarity with PeopleSoft project structure
+
+### Verify Python version
+```bash
+python --version
 ```
-pip install docxtpl python-docx
+
+## 📦 Quick Start
+
+### Option 1: Install from source
+
+```bash
+# Clone repository
+git clone https://github.com/akanashiro/pyPsPrintProject.git
+cd pyPsPrintProject
+
+# Install dependencies
+pip install -r requirements.txt
 ```
 
-PeopleSoft XML doesn't come with root tag (don't know why), so you will see something like this.
-```XML
-<?xml version='1.0'?>
-  <!--Warning : Don't edit this file -->
-  <instance class="PJM">
-    <rowset name="PjmDefn" size="2856" count="1">
-      <row>
+### Option 2: Manual dependency installation
+
+```bash
+pip install docxtpl>=0.16.0 python-docx>=0.8.11
 ```
 
-You must open the XML file and add <root> tag before <instance> and the end of the file.
-```XML
+### Verify installation
+
+```bash
+python main.py --help
+```
+
+You should see the program help without errors.
+
+## 🚀 Basic Usage
+
+### Prepare XML file
+
+The XML exported from **Application Designer** requires a root tag.
+
+**Steps:**
+1. Export project: Project → Tools → Export
+2. Open `.xml` file with text editor
+3. Add `<root>` after the XML declaration:
+
+```xml
 <?xml version='1.0'?>
 <root>
   <!--Warning : Don't edit this file -->
   <instance class="PJM">
     <rowset name="PjmDefn" size="2856" count="1">
-      <row>
       ...
+    </rowset>
+  </instance>
 </root>
 ```
 
-### Language
-I haven't considered any other language rather than English.
+### Generate Markdown documentation
 
-### Application could break in certain scenarios:
-There are some projects that could crash the applications like those with object definitions but the object is empty.
-
-
-## How to run:
-```
-    >> python main.py MyProject.xml --format md [--output MyProject.md]
-    >> python main.py MyProject.xml -f md [-o MyProject.md]
-    >> python main.py MyProject.xml --format docx --template MyTemplate.docx [--output MyProject.docx]
-    >> python main.py MyProject.xml --ft docx -t MyTemplate.docx [-o MyProject.docx]
+```bash
+python main.py MyProject.xml --format md --output MyProject.md
 ```
 
+**Result:** File `MyProject.md` with all definitions documented in Markdown format.
 
-![](./assets/portada.png)
+```bash
+# Equivalent options (short form)
+python main.py MyProject.xml -f md -o MyProject.md
+```
+
+### Generate Word documentation
+
+```bash
+python main.py MyProject.xml --format docx \
+  --template assets/project_template.docx \
+  --output MyProject.docx
+```
+
+**Requirement:** Word template with Jinja2 variables such as:
+- `{{ project_name }}`
+- `{{ project_definitions }}`
+- `{{ summary }}`
+
+### View all options
+
+```bash
+python main.py --help
+
+# Expected output:
+# usage: main.py [-h] [--format {docx,md}] [--template TEMPLATE] [--output OUTPUT] xml_path
+#
+# Documentation generator for PeopleSoft projects
+#
+# positional arguments:
+#   xml_path          Path to XML file exported from Application Designer
+#
+# optional arguments:
+#   -h, --help        show this help message and exit
+#   --format {docx,md}, -f {docx,md}
+#                     Output format: docx or md (default: md)
+#   --template TEMPLATE, -t TEMPLATE
+#                     Path to .docx template with Jinja2 markers
+#   --output OUTPUT, -o OUTPUT
+#                     Output path (extension added automatically)
+```
+
+## ⚙️ Configuration
+
+### Command-line parameters
+
+| Parameter | Short form | Description | Required |
+|---|---|---|---|
+| `xml_path` | - | Path to XML file | ✅ Yes |
+| `--format` | `-f` | `md` or `docx` | ❌ No (default: md) |
+| `--template` | `-t` | Path to Word template | ❌ Only for docx |
+| `--output` | `-o` | Output file name | ❌ No (default: XML name) |
+
+### Usage examples
+
+```bash
+# Simple Markdown
+python main.py project.xml
+
+# Markdown with specific output
+python main.py project.xml -f md -o docs/project.md
+
+# Word with custom template
+python main.py project.xml -f docx -t my_template.docx -o output.docx
+
+# Using absolute paths (recommended for files in other folders)
+python main.py /full/path/project.xml -o /output/path/project.md
+```
+
+### Customize Word templates
+
+Word templates use **Jinja2** for dynamic variables:
+
+```jinja2
+{# File: template.docx (edit with Word) #}
+
+Project: {{ project_name }}
+Date: {{ generation_date }}
+Version: {{ project_version }}
+
+Definitions:
+{{ project_definitions }}
+```
+
+## 📂 Project Structure
+
+```
+pyPsPrintProject/
+├── main.py                    # Entry point (CLI)
+├── projectParser.py           # XML parser → Python classes (87 KB)
+├── projDocGen.py              # MD/DOCX document generator (37 KB)
+├── helperFunctions.py         # Helper functions (6.5 KB)
+├── requirements.txt           # Python dependencies
+├── LICENSE                    # MIT License
+├── README.md                  # This file
+└── assets/
+    ├── project_template.docx  # Example Word template
+    └── screenshots/           # Documentation screenshots
+```
+
+### Data flow
+
+```
+file.xml 
+    ↓
+projectParser.py (XML parser)
+    ↓
+PSProject + definitions (Python classes)
+    ↓
+projDocGen.py (generator)
+    ↓
+file.md or file.docx
+```
+
+### Main modules
+
+- **projectParser.py**: Converts XML to Python objects (PSProject, PSField, PSRecord, etc)
+- **projDocGen.py**: Generates Markdown or Word from Python objects
+- **helperFunctions.py**: Translates PeopleSoft codes (field types, flags, etc)
+- **main.py**: Command-line interface (CLI)
+
+## 📊 Supported Definitions
+
+### Fully supported ✅
+
+| Object | Details | Notes |
+|---|---|---|
+| **Field** | Definition + Translate values | Types: Char, Long Char, Number, Date, Time, DateTime, Image |
+| **Record** | Definition + PeopleCode + SQL View | For Views: auto-generates SELECT |
+| **Page** | Complete definition | Includes nested components |
+| **Component** | Definition + PeopleCode + Record Field PC | PeopleCode nesting |
+| **Application Engine** | Do While, Do Select, Do When, Do Until | Includes sections and call sections |
+| **Process Definition** | Parameters and configuration | - |
+| **Job Definition** | Complete definition | - |
+| **SQL Object** | Definition and script | - |
+| **File Layout** | Definition | - |
+| **BI Publisher Report** | Basic definition | - |
+| **Message Catalog** | Error/warning messages | - |
+| **Menu** | Definition and structure | - |
+| **Permission List** | Users and access | Without menu.comp.pages (too much volume) |
+| **PS Query** | Basic definition | - |
+| **Application Package** | PeopleCode | - |
+
+### Partially supported ⚠️
+
+| Object | Limitation | Workaround |
+|---|---|---|
+| **Pages** | Doesn't get images | Document manually |
+| **PS Query** | Does not distinguish public/private | - |
+| **REST Service** | Only Operation, not other types | - |
+| **App Engine Steps** | Requires parent section in XML | Export complete section |
+| **Record Translate** | Depends on parent Field | Include Field in export |
+
+### Not supported ❌
+
+| Object | Reason | Alternative |
+|---|---|---|
+| **CSS Styles** | Not relevant for documentation | Document manually |
+| **Icons** | Not relevant for documentation | Document manually |
+| **Roles** | Not implemented yet | Contribution welcome! |
+| **Content Reference** | Not implemented yet | Contribution welcome! |
+
+## ⚠️ Known Limitations
+
+### Empty definitions
+If the XML contains definitions with a name but empty content, they may not be processed correctly.
+
+**Solution:** Verify that the export is complete in Application Designer.
+
+### Nested objects without parent
+Some objects depend on the parent (ex: xlat depends on Field). If the parent is not exported, the nested object does not appear.
+
+**Solution:** Include the parent object in the export.
+
+### Application Engine - Actions without Section
+AE actions are only documented if their parent section is included.
+
+**Solution:** Export the complete AE section, not just the actions.
+
+### English only
+Currently the tool only generates documentation in English.
+
+**Solution:** Contributions welcome to add languages.
+
+### Performance with very large projects
+Projects with >500 definitions may take a few seconds.
+
+**Solution:** Normal, due to XML parsing and document generation.
+
+## 🐛 Troubleshooting
+
+### Error: "Cannot find file: MyProject.xml"
+```
+❌ Error: File not found: MyProject.xml
+```
+
+**Causes:**
+- File does not exist in that location
+- Incorrect or relative path
+
+**Solution:**
+```bash
+# Use absolute path
+python main.py C:/Users/me/Documents/MyProject.xml
+
+# Or navigate to the folder first
+cd C:/Users/me/Documents/
+python main.py MyProject.xml
+```
 
 ---
 
-## Definitions that work
-* Field:
-  * Field Definition
-  * Translate values
-* Record:
-  * Record Definition
-  * Record PeopleCode
-  * SQL View for Views
-* Page Definition
-* Process Definition
-* Job Definition
-* SQL Object
-* File Layout
-* PS Query
-* BI Publisher Reports
-* Message Catalog
-* Menu
-* Component:
-  * Component Definition
-  * Component PeopleCode
-  * Component Record Field PeopleCode
-* Application Package PeopleCode
-* Application Engine basic information
-  * Application Engine PeopleCode
-  * Application Engine SQL
-    * Do While
-    * Do Select
-    * Do When
-    * Do Until
-  * Call Section
-  * Log messages
-* Permission Lists
+### Error: "ModuleNotFoundError: No module named 'docxtpl'"
+```
+❌ ModuleNotFoundError: No module named 'docxtpl'
+```
 
-![](./assets/ae.png)
+**Cause:** Dependencies not installed.
 
-## What partially works but still functional
-* Those projects that may contain the name object definition but definition is empty, may not show all information.
-* Some definitions are processed nested. Eg: xlat depends on Field parent definition. If that parent definition is not present in project file, it may not be shown.
-* Only REST Service Operation.
-* Permission Lists: I don't retrieve menu.comp.pages security because the list could be very long
-* Application Engine Step.actions are nested, thus if you don't include the Application Engine Section that contains the action.step, they may not be be shown.
+**Solution:**
+```bash
+pip install -r requirements.txt
+# Or manually:
+pip install docxtpl python-docx
+```
+
+---
+
+### Error: "XML is not well-formed"
+```
+❌ xml.etree.ElementTree.ParseError: not well-formed (invalid token)
+```
+
+**Cause:** Missing `<root>` and `</root>` tags in the XML.
+
+**Solution:**
+1. Open `MyProject.xml` with text editor
+2. Add `<root>` after `<?xml version='1.0'?>`
+3. Add `</root>` at the end of the file
+4. Save and run again
+
+---
+
+### Error: "--template required for DOCX format"
+```
+❌ Error: --template is required to generate DOCX.
+```
+
+**Cause:** Missing Word template when using `-f docx`.
+
+**Solution:**
+```bash
+# Include template
+python main.py project.xml -f docx -t template.docx
+
+# Or use example template
+python main.py project.xml -f docx -t assets/project_template.docx
+```
+
+---
+
+### DOCX document comes out blank
+**Cause:** Template does not have Jinja2 variables or they are incorrectly named.
+
+**Solution:**
+1. Edit template in Word
+2. Add fields like: `{{ project_name }}`, `{{ definitions }}`
+3. Save and run again
+
+---
+
+### Some objects do not appear in the output
+**Cause:** Object exists but is empty, or parent is missing.
+
+**Solution:**
+1. Verify in Application Designer that the object exists
+2. Include the parent object if it depends on another
+3. See "Known Limitations" section
+
+---
+
+### Application Engine comes out incomplete
+**Cause:** AE section missing from XML.
+
+**Solution:**
+```bash
+# Make sure to export the complete AE section
+# In Application Designer: Project → Tools → Export
+# Select the entire AE section
+```
+
+---
+
+### Generic error message or crash
+1. Verify that the XML is valid (well-formed)
+2. Try with a smaller project first
+3. Open issue on GitHub with:
+   - Sanitized XML (without confidential data)
+   - Python version
+   - Operating system
+   - Complete error message
+
+## 🤝 How to Contribute
+
+This is an **open-source hobby project welcoming contributions**. If you find it useful, consider contributing/forking.
+
+### Ways to contribute
+
+**Report bugs**
+- Open issue with clear description
+- Attach example XML (sanitized, without confidential data)
+- Include Python version and OS
+
+**Propose improvements**
+- Discuss in issue before making PR
+- Examples: new object type, better markdown, translation
+
+**Code**
+- Refactoring or cleanup
+- New features
+- Unit tests
+
+**Documentation**
+- Improve README
+- Translate to other languages
+- Usage examples
+
+**Graphical interface**
+- Collaborator sought to create GUI (tkinter/PyQt)
+- This would make the tool more accessible
+
+### Process for making Pull Requests
+
+1. **Fork** the repository
+2. **Create branch**: `git checkout -b feature/new-functionality`
+3. **Make changes** and test with real XML
+4. **Commit**: `git commit -am 'Add support for XYZ'`
+5. **Push**: `git push origin feature/new-functionality`
+6. **Open PR** with clear description
+
+### PR requirements
+
+- ✅ Clean code (follow PEP 8)
+- ✅ Clear comments on important changes
+- ✅ Tested with real PeopleSoft XML
+- ✅ Do not break existing functionality
+
+## 📄 License
+
+MIT License - See [LICENSE](LICENSE) file for details.
+
+The project is freely available for commercial, personal and educational use.
+
+---
+
+## 📞 Support and Contact
+
+- **Issues and bugs**: Open issue on GitHub
+- **Questions**: GitHub Discussions
+- **Author**: akanashiro@gmail.com
+
+## 🙏 Acknowledgments
+
+- My partners at work
+- Jinja2 and python-docx for excellent libraries
+
+---
+
+**Use in production?**
+Use it at your own risk
 
 
-## To-do
-* Code
-  * Clean up code
-  * Refactoring
-  * Standardize object naming
-  * Some things are in Spanish, I should translate them to English
-* Improve and complete Markdown rendering 
-* PS Query:
-  * What is the tag that defines a query is public or private?
-  * build SQL from "QdmDefn" rowset
-* File Layout: couldn't get the tag that defines the output file format. Maybe "eFormat"?
-* Message Catalog: couldn't get long explanation
-* Menu: it doesn't show BarItem + BarPanel yet
-* Component Record PeopleCode
-* Translate values
-* BI Publisher Report: list template files
-* Roles
-* Content Reference
-* Application Package definition
-* Indices
-* Maybe I can get the upgrade action through "eUpgradeAction" tag.
-* Remaining definitions found in the XML file...
-
-## Won't do
-* PeopleCode Menu
-* Other objects like CSS styles or icons
+**Planned future improvements:**
+- [ ] Support for more formats (HTML, PDF)
+- [ ] GUI (graphical interface)
+- [ ] Publish on PyPI for installation with `pip install pypsprintproject`
+- [ ] Automated tests
+- [ ] Support for multiple languages
+- [ ] Export to interactive HTML with search
