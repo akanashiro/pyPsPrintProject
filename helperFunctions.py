@@ -12,18 +12,22 @@
 helperFunctions.py
 -------------------
 Funciones auxiliares para el proyecto pyPSPrintProject, incluyendo:
-- getFieldTypeDescription: Convierte el código de tipo de campo a una descripción legible
-- getRecordTypeDescription: Convierte el código de tipo de registro a una descripción legible
-- getPageTypeDescription: Convierte el código de tipo de página a una descripción legible
+- decodeFieldType: Convierte el código de tipo de campo a una descripción legible
+- decodRecordType: Convierte el código de tipo de registro a una descripción legible
+- decodePageType: Convierte el código de tipo de página a una descripción legible
 - decodeFieldFlags: Decodifica los bit del campo fUseEdit del XML para saber qué tipo de campo es
-
+- fixRootTag: Agrega un tag <root> envolvente al XML si no existe, manejando correctamente declaraciones XML y encoding
 Requisitos:
     N/A
 
 """
 
 # Begin 001
-def getFieldTypeDescription(fieldTypeStr_: str) -> str:
+
+import re
+import os
+
+def decodeFieldType(fieldTypeStr_: str) -> str:
     """
     Convierte el código de tipo de campo (fieldTypeStr_) a una descripción legible.
 
@@ -33,9 +37,9 @@ def getFieldTypeDescription(fieldTypeStr_: str) -> str:
 
     match fieldTypeStr_:
         case "0":
-            return "Character"
+            return "Char"
         case "1":
-            return "Long Character"
+            return "Long Char"
         case "2":
             return "Number"
         case "3":
@@ -53,7 +57,7 @@ def getFieldTypeDescription(fieldTypeStr_: str) -> str:
 
     return f"Unknown ({fieldTypeStr_})"
 
-def getRecordTypeDescription(recTypeStr_: str) -> str:
+def decodRecordType(recTypeStr_: str) -> str:
 
     """
     Convierte el código de tipo de registro (recTypeStr_) a una descripción legible.
@@ -79,7 +83,7 @@ def getRecordTypeDescription(recTypeStr_: str) -> str:
             
     return f"Unknown ({recTypeStr_})" 
 
-def getPageTypeDescription(pageTypeStr_: str) -> str:
+def decodePageType(pageTypeStr_: str) -> str:
     """
     Convierte el código de tipo de página (pageTypeStr_) a una descripción legible.
     :param pageTypeStr_: Código de tipo de página (string)
@@ -183,5 +187,77 @@ def decodeFieldFlags(useEditValueNbr_ : int) -> dict:
         "flags":       active_flags,
         "description": " + ".join(active_flags) if active_flags else "Sin flags activos",
     }
+
+def fixRootTag(filepath: str, root_tag: str = "root", backup: bool = True) -> bool:
+    """
+    Agrega un tag <root> envolvente al XML si no existe.
+
+    Maneja correctamente:
+    - XMLs con declaración <?xml version="1.0"?>
+    - XMLs sin declaración
+    - XMLs que ya tienen un root válido (no los modifica)
+    - Encoding declarado en el XML
+
+    Args:
+        filepath:  Ruta al archivo XML a corregir.
+        root_tag:  Nombre del tag raíz a insertar (default: "root").
+        backup:    Si True, guarda una copia .bak antes de modificar.
+
+    Returns:
+        True si se modificó el archivo, False si ya era válido.
+
+    Raises:
+        FileNotFoundError: Si el archivo no existe.
+        ValueError:        Si el archivo está vacío o no parece XML.
+    """
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(f"Archivo no encontrado: {filepath}")
+
+    with open(filepath, encoding="utf-8", errors="replace") as f:
+        content = f.read()
+
+    if not content.strip():
+        raise ValueError(f"El archivo está vacío: {filepath}")
+
+    # Detectar si ya tiene un único elemento raíz válido
+    # Estrategia: buscar si el primer tag de apertura tiene su cierre al final
+    stripped = content.strip()
+
+    # Extraer declaración XML si existe (<?xml ... ?>)
+    xml_declaration = ""
+    body = stripped
+    decl_match = re.match(r"^(<\?xml[^?]*\?>)\s*", stripped, re.IGNORECASE)
+    if decl_match:
+        xml_declaration = decl_match.group(1)
+        body = stripped[decl_match.end():]
+
+    # Detectar si el body ya tiene UN solo elemento raíz
+    # (empieza con <tag y termina con </tag>)
+    single_root_match = re.match(r"^<([a-zA-Z_][\w\-.]*)[\s>]", body)
+    if single_root_match:
+        first_tag = single_root_match.group(1)
+        closing_tag = f"</{first_tag}>"
+        if body.rstrip().endswith(closing_tag):
+            # Ya tiene un root válido, no tocar
+            return False
+
+    # Necesita root: construir el nuevo contenido
+    if backup:
+        backup_path = filepath + ".bak"
+        with open(backup_path, "w", encoding="utf-8") as f:
+            f.write(content)
+
+    new_content = ""
+    if xml_declaration:
+        new_content += xml_declaration + "\n"
+
+    new_content += f"<{root_tag}>\n"
+    new_content += body.strip() + "\n"
+    new_content += f"</{root_tag}>\n"
+
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(new_content)
+
+    return True
 
 # End 001

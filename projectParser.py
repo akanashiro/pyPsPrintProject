@@ -122,7 +122,7 @@ class RecordDefinition:
         print (f"  🗂️  Fields: {len(self.fields)}")
         conta = 1
         for recField in self.fields:
-            print(f"       Field {conta}. {recField.name} | Type: {helpers.getFieldTypeDescription(recField.field_type)} | Length: {recField.length} | Decimals: {recField.decimals} | Is Key: {recField.is_key}")
+            print(f"       Field {conta}. {recField.name} | Type: {helpers.decodeFieldType(recField.field_type)} | Length: {recField.length} | Decimals: {recField.decimals} | Is Key: {recField.is_key}")
             conta += 1
 
 
@@ -459,6 +459,7 @@ class PSProject:
                 # Process each field row
                 atmFieldNameStr = fieldRow.findtext("atmFieldName", default="").strip()
                 eFieldTypeStr = fieldRow.findtext("eFieldType", default="").strip()
+                fieldTypeStr = helpers.decodeFieldType(eFieldTypeStr)
                 nLengthStr = fieldRow.findtext("nLength", default="").strip()
                 nDecimalPosStr = fieldRow.findtext("nDecimalPos", default="").strip()
                 fUseEditNbr = int(fieldRow.findtext("fUseEdit", default="0").strip())
@@ -505,7 +506,7 @@ class PSProject:
 
                 recordFieldObj = RecordField(
                     name = atmFieldNameStr,
-                    field_type = eFieldTypeStr,
+                    field_type = fieldTypeStr,
                     length = int(nLengthStr),
                     decimals = int(nDecimalPosStr),
                     is_key = isKeyBool,
@@ -545,7 +546,7 @@ class PSProject:
                         if szRecNameStr == recordNameStr_:
                             eRecTypeStr = row.findtext("eRecType", default="").strip()
 
-                            recTypeDescrStr = helpers.getRecordTypeDescription(eRecTypeStr)
+                            recTypeDescrStr = helpers.decodRecordType(eRecTypeStr)
 
                             szRecDescrStr = row.findtext("szRecDescr", default="").strip() 
                             szParentRecNameStr = row.findtext("szParentRecName", default="").strip() 
@@ -614,7 +615,7 @@ class PSProject:
                                                     
                         if szFieldNameStr == fieldNameStr_:
                             eFieldTypeStr = fieldRow.findtext("eFieldType", default="").strip()
-                            fieldTypeDescrStr = helpers.getFieldTypeDescription(eFieldTypeStr)
+                            fieldTypeDescrStr = helpers.decodeFieldType(eFieldTypeStr)
                             nLengthStr = fieldRow.findtext("nLength", default="").strip()
                             nDecimalPosStr = fieldRow.findtext("nDecimalPos", default="").strip()                            
                             shorNameStr = fieldRow.findtext("szShortName", default="").strip() 
@@ -938,7 +939,7 @@ class PSProject:
                                                     
                         if szPnlNameStr == pageNameStr_:
                             ePnlTypeStr = pageRow.findtext("ePnlType", default="").strip()
-                            pageTypeDescrStr = helpers.getPageTypeDescription(ePnlTypeStr)
+                            pageTypeDescrStr = helpers.decodePageType(ePnlTypeStr)
                             szDescrStr = pageRow.findtext("szDescr", default="").strip() 
 
                             pageObj = PageDefinition(

@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 from projectParser import PSProjectParser, PSProject
 from projDocGen import DocGenerator, printToConsole
-
+import helperFunctions as helpers
 
 
 def main():
@@ -54,6 +54,16 @@ def main():
 
     if args.template and not Path(args.template).exists():
         print(f"❌ Error: No se encontró la plantilla: {args.template}", file=sys.stderr)
+        sys.exit(1)
+
+
+    # Corregir root automáticamente si hace falta
+    try:
+        fixed = helpers.fixRootTag(args.xml_path)
+        if fixed:
+            print(f"⚠️  XML corregido: se agregó tag <root> automáticamente.")
+    except (FileNotFoundError, ValueError) as e:
+        print(f"❌ Error: {e}", file=sys.stderr)
         sys.exit(1)
 
     # Salida base

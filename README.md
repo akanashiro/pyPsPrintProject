@@ -78,26 +78,6 @@ You should see the program help without errors.
 
 ## 🚀 Basic Usage
 
-### Prepare XML file
-
-The XML exported from **Application Designer** requires a root tag.
-
-**Steps:**
-1. Export project: Project → Tools → Export
-2. Open `.xml` file with text editor
-3. Add `<root>` after the XML declaration:
-
-```xml
-<?xml version='1.0'?>
-<root>
-  <!--Warning : Don't edit this file -->
-  <instance class="PJM">
-    <rowset name="PjmDefn" size="2856" count="1">
-      ...
-    </rowset>
-  </instance>
-</root>
-```
 
 ### Generate Markdown documentation
 
@@ -337,21 +317,6 @@ pip install docxtpl python-docx
 
 ---
 
-### Error: "XML is not well-formed"
-```
-❌ xml.etree.ElementTree.ParseError: not well-formed (invalid token)
-```
-
-**Cause:** Missing `<root>` and `</root>` tags in the XML.
-
-**Solution:**
-1. Open `MyProject.xml` with text editor
-2. Add `<root>` after `<?xml version='1.0'?>`
-3. Add `</root>` at the end of the file
-4. Save and run again
-
----
-
 ### Error: "--template required for DOCX format"
 ```
 ❌ Error: --template is required to generate DOCX.
@@ -434,5 +399,5 @@ Not 100% functional but usable.
 **Planned future improvements:**
 - [ ] Standardize code
 - [ ] Refactoring
-- [ ] Automate ```<root>``` tag addition to XML
+- [x] Automate ```<root>``` tag addition to XML
 - [ ] GUI (graphical interface)
