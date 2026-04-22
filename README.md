@@ -437,9 +437,4 @@ The project is freely available for commercial, personal and educational use.
 Not 100% functional but usable.
 
 **Planned future improvements:**
-- [ ] Support for more formats (HTML, PDF)
 - [ ] GUI (graphical interface)
-- [ ] Publish on PyPI for installation with `pip install pypsprintproject`
-- [ ] Automated tests
-- [ ] Support for multiple languages
-- [ ] Export to interactive HTML with search
