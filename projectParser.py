@@ -4,9 +4,6 @@
 # File:             projectParser.py
 # Author:           akanashiro@gmail.com
 # License:          MIT - read LICENSE in repo
-# Changelog:
-# Date             Author       Ref.     Description
-# 2026/03/22       AKF          #001     XML parser.
 # ============================================================================
 
 """
@@ -821,7 +818,7 @@ class PSProject:
                             return pcEventObj
         return None
 
-    def _getEventPeopleCode(self, objectValue0_: str, objectValue1_: str, objectValue2_: str, objectValue3_: str, objectValue4_:str, eventTypeStr_: str, rootNode_) -> PeopleCodeEvent | None:
+    def _getEventPeopleCode(self, objectValue0_: str, objectValue1_: str, objectValue2_: str, objectValue3_: str, objectValue4_:str , eventTypeStr_: str, rootNode_) -> PeopleCodeEvent | None:
 
         # Inicialización de variables
         recordNameStr = ""
@@ -835,6 +832,8 @@ class PSProject:
                     for pcRow in pcNode.findall("row"):
                         match eventTypeStr_:
                             case "REC" | "CMP":
+                                # Record Field
+                                # Component
                                 szObjectValue_0Str = pcRow.findtext("szObjectValue_0", default="").strip() # Record | Component
                                 szObjectValue_1Str = pcRow.findtext("szObjectValue_1", default="").strip() # Field | Market
                                 szObjectValue_2Str = pcRow.findtext("szObjectValue_2", default="").strip() # Event | Event
@@ -863,8 +862,35 @@ class PSProject:
                                             source_code = peopleCodeText.text.strip() if peopleCodeText is not None and peopleCodeText.text else ""
                                     )
                                     return pcEventObj
+                            
+                            case "CR":
+                                # Component Record
+                                szObjectValue_0Str = pcRow.findtext("szObjectValue_0", default="").strip() # Component
+                                szObjectValue_1Str = pcRow.findtext("szObjectValue_1", default="").strip() # Market
+                                szObjectValue_2Str = pcRow.findtext("szObjectValue_2", default="").strip() # Record
+                                szObjectValue_3Str = pcRow.findtext("szObjectValue_3", default="").strip() # Event
+
+                                peopleCodeTypeStr = "Component Record"
+
+                                if szObjectValue_0Str == objectValue0_ and szObjectValue_1Str == objectValue1_ and szObjectValue_2Str == objectValue2_ and szObjectValue_3Str == objectValue3_ :
+
+                                    peopleCodeText = instance.find(".//peoplecode_text")                                        
+                                    pcEventObj = PeopleCodeEvent(
+                                        component = objectValue0_,
+                                        market = objectValue1_,                                        
+                                        record_name = objectValue2_,
+                                        field_name = "",
+                                        event_type =  objectValue3_,          # FieldDefault, FieldFormula, RowInit, RowInsert, RowDelete,
+                                                                    # SavePreChange, SavePostChange, FieldEdit, FieldChange,
+                                                                    # PrePopup, Activate, ItemSelected, etc.
+                                        code_type = peopleCodeTypeStr,                                                            
+                                        source_code = peopleCodeText.text.strip() if peopleCodeText is not None and peopleCodeText.text else ""
+                                    )                                
+                                    return pcEventObj
+
                                     
                             case "CRF":
+                                # Component Record Field
                                 szObjectValue_0Str = pcRow.findtext("szObjectValue_0", default="").strip() # Component
                                 szObjectValue_1Str = pcRow.findtext("szObjectValue_1", default="").strip() # Market
                                 szObjectValue_2Str = pcRow.findtext("szObjectValue_2", default="").strip() # Record
@@ -876,13 +902,12 @@ class PSProject:
                                 if szObjectValue_0Str == objectValue0_ and szObjectValue_1Str == objectValue1_ and szObjectValue_2Str == objectValue2_ and szObjectValue_3Str == objectValue3_  and  szObjectValue_4Str == objectValue4_ :
 
                                     peopleCodeText = instance.find(".//peoplecode_text")    
-                                    # debug print(f"{szObjectValue_0Str}.{szObjectValue_1Str}.{szObjectValue_2Str}.{szObjectValue_3Str}.{szObjectValue_4Str}")
                                     pcEventObj = PeopleCodeEvent(
-                                        component = szObjectValue_0Str,
-                                        market = szObjectValue_1Str,                                        
-                                        record_name = szObjectValue_2Str,
-                                        field_name = szObjectValue_3Str,
-                                        event_type =  szObjectValue_4Str,          # FieldDefault, FieldFormula, RowInit, RowInsert, RowDelete,
+                                        component = objectValue0_,
+                                        market = objectValue1_,                                        
+                                        record_name = objectValue2_,
+                                        field_name = objectValue3_,
+                                        event_type =  objectValue4_,          # FieldDefault, FieldFormula, RowInit, RowInsert, RowDelete,
                                                                     # SavePreChange, SavePostChange, FieldEdit, FieldChange,
                                                                     # PrePopup, Activate, ItemSelected, etc.
                                         code_type = peopleCodeTypeStr,                                                            
@@ -1528,7 +1553,7 @@ class PSProject:
                 # print(f"🔹 Component: {objectValue0_}")
             case "8":
                 # Record PeopleCode
-                resultObj = self._getEventPeopleCode(objectValue0_, objectValue1_, objectValue2_, objectValue3_, objectValue4_, "REC", rootNode_)
+                resultObj = self._getEventPeopleCode(objectValue0_, objectValue1_, objectValue2_, objectValue3_, "", "REC", rootNode_)
                 if resultObj is not None:
                     self.peoplecode.append(resultObj)
             case "10":                    
@@ -1581,9 +1606,14 @@ class PSProject:
                 print(f"📄 Service Operation: {objectValue0_}")
             case "46":
                 # Component PeopleCode
-                resultObj = self._getEventPeopleCode(objectValue0_, objectValue1_, objectValue2_, objectValue3_, objectValue4_, "CMP", rootNode_)
+                resultObj = self._getEventPeopleCode(objectValue0_, objectValue1_, objectValue2_, objectValue3_, "", "CMP", rootNode_)
                 if resultObj is not None:
                     self.peoplecode.append(resultObj)
+            case "47":
+                # Component Record PeopleCode                
+                resultObj = self._getEventPeopleCode(objectValue0_, objectValue1_, objectValue2_, objectValue3_, "", "CR", rootNode_)
+                if resultObj is not None:
+                    self.peoplecode.append(resultObj)                    
             case "48":
                 # Component Record Field PeopleCode
                 objectValue3Str_, objectValue4Str_ = objectValue3_.split()
@@ -1617,9 +1647,8 @@ class PSProject:
                 resultObj = self._getBIReportDefinition(objectValue0_, rootNode_)
                 if resultObj is not None:
                     self.bi_reports.append(resultObj)
-                print(f"BI Publisher {objectValue0_}")
             case "104":
-                print(f"📄 Query: {objectValue0_}")
+                print(f"📄 Unknown: {objectValue0_}")
             case "116":
                 print(f"📄 Integration Broker: {objectValue0_}")
         return None
@@ -1651,19 +1680,19 @@ def getProject(xml_path: str)  -> PSProject  | None:
                 projectObj.description = projectDescrStr.text.strip() if projectDescrStr is not None and projectDescrStr.text else ""
 
                 if projectNameStr is None or not projectNameStr.text:
-                    print("⚠️  No se encontró nombre del proyecto en el XML.")
+                    print("⚠️  Project name not found in XML.")
                     return None
 
                 for lpPit in instance.iter("lpPit"):
                     
                     if lpPit is None:
-                        print("⚠️  No se encontró nodo lpPit en el XML.")
+                        print("⚠️  lpPit node not found in XML.")
                         continue
 
                     pjmPitNode = lpPit.find(".//rowset[@name='PjmPit']")
 
                     if pjmPitNode is not None:
-                        print(f"Total de rows: {pjmPitNode.get('count')}")
+                        print(f"Total rows: {pjmPitNode.get('count')}")
                         
                         for row in pjmPitNode.findall("row"):
                             objectTypeNode = row.findtext("eObjectType", default="").strip()
@@ -1679,7 +1708,7 @@ def getProject(xml_path: str)  -> PSProject  | None:
                     return projectObj
 
             if projectNameStr is None or not projectNameStr.text:
-                print("⚠️  No se encontró nombre del proyecto en el XML.")
+                print("⚠️  Project name not found in XML.")
                 return None
 
     return None    
@@ -1696,6 +1725,6 @@ class PSProjectParser:
         project = getProject(self.xml_path)
 
         if project is None:
-            raise ValueError("No se pudo extraer el nombre del proyecto desde el XML.")
+            raise ValueError("Couldn't extract project name from XML.")
         
         return project

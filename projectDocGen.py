@@ -1,17 +1,14 @@
 # ============================================================================
 # Project:          pyPSPrintProject
 # Description:      Print Project de proyecto de proyecto exportado a XML
-# Nombre Archivo:  projDocGen.py
+# Nombre Archivo:   projectDocGen.py
 # Author:           akanashiro@gmail.com
 # License:          MIT - read LICENSE in repo
-# Changelog:
-# Date             Author       Ref.     Description
-# 2026/03/22       AKF          #001     Document render engine.
 # ============================================================================
 
 
 """
-projDocGen.py
+projectDocGen.py
 -------------------
 Genera documentación de un proyecto PeopleSoft en formato DOCX (via
 python-docx-template con Jinja2) o Markdown.
@@ -25,7 +22,7 @@ Uso:
     gen.to_docx("output.docx")
     gen.to_markdown("output.md")
 """
-# Begin 001
+
 from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -606,7 +603,7 @@ class DocxGenerator:
         doc = self.DocxTemplate(self.template_path)
         doc.render(context)
         doc.save(output_path)
-        print(f"✅ DOCX generado: {output_path}")
+        print(f"✅ DOCX created: {output_path}")
 
 
 # ---------------------------------------------------------------------------
@@ -619,7 +616,7 @@ class MarkdownGenerator:
         lines = []
         self._write(lines, context)
         Path(output_path).write_text("\n".join(lines), encoding="utf-8")
-        print(f"✅ Markdown generado: {output_path}")
+        print(f"✅ Markdown created: {output_path}")
 
     def _write(self, lines: list, ctx: dict):
         a = lines.append
@@ -1042,4 +1039,3 @@ class DocGenerator:
     def get_context(self) -> dict:
         """Retorna el contexto para inspección o plantillas personalizadas."""
         return self.context
-# End 001

@@ -1,28 +1,24 @@
 # ============================================================================
 # Project:          pyPSPrintProject
 # Description:      Print Project de proyecto de proyecto exportado a XML
-# File:             helperFunctions.py
+# File:             helpFunctionss.py
 # Author:           akanashiro@gmail.com
 # License:          MIT - read LICENSE in repo
-# Changelog:
-# Date             Author       Ref.     Description
-# 2026/03/22       AKF          #001     Additional functions needed
 # ============================================================================
 """
-helperFunctions.py
+helpFunctions.py
 -------------------
 Funciones auxiliares para el proyecto pyPSPrintProject, incluyendo:
 - decodeFieldType: Convierte el código de tipo de campo a una descripción legible
 - decodRecordType: Convierte el código de tipo de registro a una descripción legible
 - decodePageType: Convierte el código de tipo de página a una descripción legible
 - decodeFieldFlags: Decodifica los bit del campo fUseEdit del XML para saber qué tipo de campo es
-- fixRootTag: Agrega un tag <root> envolvente al XML si no existe, manejando correctamente declaraciones XML y encoding
-Requisitos:
+- fixRootTag: Agrega un tag <root> envolvente al XML si no existe
+
+Requisites:
     N/A
 
 """
-
-# Begin 001
 
 import re
 import os
@@ -188,7 +184,7 @@ def decodeFieldFlags(useEditValueNbr_ : int) -> dict:
         "description": " + ".join(active_flags) if active_flags else "Sin flags activos",
     }
 
-def fixRootTag(filepath: str, root_tag: str = "root", backup: bool = True) -> bool:
+def fixRootTag(filepath: str,backup: bool = True) -> bool:
     """
     Agrega un tag <root> envolvente al XML si no existe.
 
@@ -199,8 +195,7 @@ def fixRootTag(filepath: str, root_tag: str = "root", backup: bool = True) -> bo
     - Encoding declarado en el XML
 
     Args:
-        filepath:  Ruta al archivo XML a corregir.
-        root_tag:  Nombre del tag raíz a insertar (default: "root").
+        filepath:  Ruta al archivo XML a corregir.       
         backup:    Si True, guarda una copia .bak antes de modificar.
 
     Returns:
@@ -210,6 +205,11 @@ def fixRootTag(filepath: str, root_tag: str = "root", backup: bool = True) -> bo
         FileNotFoundError: Si el archivo no existe.
         ValueError:        Si el archivo está vacío o no parece XML.
     """
+
+    # root_tag:  Nombre del tag raíz a insertar (default: "root").
+    root_tag = "root"
+    
+
     if not os.path.exists(filepath):
         raise FileNotFoundError(f"Archivo no encontrado: {filepath}")
 
@@ -259,5 +259,3 @@ def fixRootTag(filepath: str, root_tag: str = "root", backup: bool = True) -> bo
         f.write(new_content)
 
     return True
-
-# End 001

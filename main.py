@@ -3,18 +3,14 @@
 # Descripción:     Print Project de proyecto de proyecto exportado a XML
 # Nombre Archivo:  main.py
 # Autor:           akanashiro@gmail.com
-# Historial de Modificaciones:
-# Fecha            Autor        Ref.     Descripción
-# 2026/03/22       AKF          #001     CLI para generación de documento
 # ============================================================================
 
-# Begin 001
 import argparse
 import sys
 from pathlib import Path
 from projectParser import PSProjectParser, PSProject
-from projDocGen import DocGenerator, printToConsole
-import helperFunctions as helpers
+from projectDocGen import DocGenerator, printToConsole
+import helpFunctions as helpers
 
 
 def main():
@@ -22,19 +18,19 @@ def main():
     Función principal del generador de documentación.
     """
 
-    parserObj = argparse.ArgumentParser(description="Generador de documentación para proyectos PeopleSoft",
+    parserObj = argparse.ArgumentParser(description="PeopleSoft Project technical document generator",
     formatter_class=argparse.RawDescriptionHelpFormatter,epilog="""
-    Ejemplos: 
+    Examples: 
     python main.py MiProyecto.xml --format md --output docs/MiProyecto.md
     python main.py MiProyecto.xml --format docx --template plantilla.docx
     """)
 
     parserObj.add_argument("xml_path",
-        help="Ruta al archivo XML exportado desde Application Designer")
+        help="Path to exported XML from Application Designer")
     parserObj.add_argument("--format", "-f",
         choices=["docx", "md"],
         default="md",
-        help="Formato de salida: docx o md (default: md)")
+        help="Output format: docx or md (default: md)")
     parserObj.add_argument("--template", "-t",
         help="Ruta a la plantilla .docx con marcadores Jinja2 (requerido para --formato docx)")
     parserObj.add_argument("--output", "-o",
@@ -45,15 +41,15 @@ def main():
     # Validaciones
     xml_path = Path(args.xml_path)
     if not xml_path.exists():
-        print(f"❌ Error: No se encontró el archivo: {xml_path}", file=sys.stderr)
+        print(f"❌ Error: File not found: {xml_path}", file=sys.stderr)
         sys.exit(1)
 
     if args.format in ("docx") and not args.template:
-        print("❌ Error: --plantilla es requerido para generar DOCX.", file=sys.stderr)
+        print("❌ Error: --template is required to generate DOCX.", file=sys.stderr)
         sys.exit(1)
 
     if args.template and not Path(args.template).exists():
-        print(f"❌ Error: No se encontró la plantilla: {args.template}", file=sys.stderr)
+        print(f"❌ Error: Template not found: {args.template}", file=sys.stderr)
         sys.exit(1)
 
 
@@ -61,7 +57,7 @@ def main():
     try:
         fixed = helpers.fixRootTag(args.xml_path)
         if fixed:
-            print(f"⚠️  XML corregido: se agregó tag <root> automáticamente.")
+            print(f"⚠️  XML fixed: <root> tag automatically added.")
     except (FileNotFoundError, ValueError) as e:
         print(f"❌ Error: {e}", file=sys.stderr)
         sys.exit(1)
@@ -70,14 +66,14 @@ def main():
     salida_base = args.output or xml_path.stem
 
     # Parseo
-    print(f"🔍 Parseando: {xml_path.name} ...")
+    print(f"🔍 Parsing: {xml_path.name} ...")
     try:
         parserObj = PSProjectParser(str(xml_path))
         projectObj = parserObj.parse()
         # printToConsole(projectObj)        
 
     except Exception as e:
-        print(f"❌ Error al parsear el XML: {e}", file=sys.stderr)
+        print(f"❌ Error parsing XML: {e}", file=sys.stderr)
         sys.exit(1)
 
     # Generación
@@ -95,4 +91,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-# End 001

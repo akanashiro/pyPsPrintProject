@@ -235,9 +235,10 @@ file.md or file.docx
 
 | Object | Limitation | Workaround |
 |---|---|---|
+| **App Package** | Doesn't generate App Package info | Document manually |
 | **Page** | Doesn't generate any image | Document manually |
-| **PS Query** | Does not distinguish public/private | - |
-| **REST Service** | Only Operation, not other types | - |
+| **PS Query** | Doesn't distinguish public/private. Doesn't generate SQL| Document manually |
+| **REST Service** | Only Operation, not other types | Document manually  |
 | **App Engine Steps** | Requires parent section in XML | Export complete section |
 | **Record Translate** | Depends on parent Field | Include Field in export |
 
@@ -370,11 +371,6 @@ python main.py project.xml -f docx -t assets/project_template.docx
 ### Generic error message or crash
 1. Verify that the XML is valid (well-formed)
 2. Try with a smaller project first
-3. Open issue on GitHub with:
-   - Sanitized XML (without confidential data)
-   - Python version
-   - Operating system
-   - Complete error message
 
 ---
 
