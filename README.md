@@ -28,7 +28,7 @@ Automated tool for generating professional documentation of PeopleSoft projects 
 - 🔍 **XML Parser** - Automatically extract definitions from PeopleSoft projects
 - 📊 **30+ object types** - Fields, Records, Pages, Components, App Engine, etc
 - ⚙️ **Customizable templates** - Use Jinja2 to adapt the format to your needs
-- 🤝 **Open Source** - PeopleSoft community contributing improvements
+- 🤝 **Open Source** - I share this code to the community. Play with it, fork it!
 
 > **Note:** This is an actively developed hobby project. It works very well for most projects, but there may be unsupported edge cases.
 
