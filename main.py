@@ -1,93 +1,68 @@
 # ============================================================================
-# Proyecto:        pyPSPrintProject
-# Descripción:     Print Project de proyecto de proyecto exportado a XML
-# Nombre Archivo:  main.py
-# Autor:           akanashiro@gmail.com
+# Project:          pyPSPrintProject
+# Description:      Launcher principal — selecciona la UI disponible
+# File:             main.py
+# Author:           akanashiro@gmail.com
+# License:          MIT - read LICENSE in repo
 # ============================================================================
+"""
+main.py
+-------
+Punto de entrada de pyPSPrintProject.
 
-import argparse
+Prioridad de UI:
+  1. PySide6   → ui_pyside.py
+  2. Tkinter   → ui_tkinter.py
+  3. Ninguno   → mensaje de error y salida con código 1
+"""
+
 import sys
-from pathlib import Path
-from projectParser import PSProjectParser, PSProject
-from projectDocGen import DocGenerator, printToConsole
-import helpFunctions as helpers
+
+
+def _try_pyside6() -> bool:
+    try:
+        import importlib
+        importlib.import_module("PySide6")
+        return True
+    except ImportError:
+        return False
+
+
+def _try_tkinter() -> bool:
+    try:
+        import importlib
+        importlib.import_module("tkinter")
+        return True
+    except ImportError:
+        return False
 
 
 def main():
-    """
-    Función principal del generador de documentación.
-    """
+    if _try_pyside6():
+        from mainQt import main as run
+        run()
 
-    parserObj = argparse.ArgumentParser(description="PeopleSoft Project technical document generator",
-    formatter_class=argparse.RawDescriptionHelpFormatter,epilog="""
-    Examples: 
-    python main.py MiProyecto.xml --format md --output docs/MiProyecto.md
-    python main.py MiProyecto.xml --format docx --template plantilla.docx
-    """)
+    elif _try_tkinter():
+        from mainTk import main as run
+        run()
 
-    parserObj.add_argument("xml_path",
-        help="Path to exported XML from Application Designer")
-    parserObj.add_argument("--format", "-f",
-        choices=["docx", "md"],
-        default="md",
-        help="Output format: docx or md (default: md)")
-    parserObj.add_argument("--template", "-t",
-        help="Ruta a la plantilla .docx con marcadores Jinja2 (requerido para --formato docx)")
-    parserObj.add_argument("--output", "-o",
-        help="Ruta de salida sin extensión (se agrega automáticamente) o con extensión si es un formato único")
-
-    args = parserObj.parse_args()
-
-    # Validaciones
-    xml_path = Path(args.xml_path)
-    if not xml_path.exists():
-        print(f"❌ Error: File not found: {xml_path}", file=sys.stderr)
+    else:
+        print(
+            "❌  No se encontró ninguna biblioteca de UI compatible.\n"
+            "\n"
+            "   Para instalar PySide6 (recomendado):\n"
+            "       pip install PySide6\n"
+            "\n"
+            "   Tkinter suele venir incluido con Python.\n"
+            "   Si no está disponible, instalalo según tu sistema:\n"
+            "       Windows / macOS : reinstalá Python desde python.org\n"
+            "       Debian / Ubuntu : sudo apt install python3-tk\n"
+            "       Fedora          : sudo dnf install python3-tkinter\n"
+            "       Arch            : sudo pacman -S tk\n",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
-    if args.format in ("docx") and not args.template:
-        print("❌ Error: --template is required to generate DOCX.", file=sys.stderr)
-        sys.exit(1)
-
-    if args.template and not Path(args.template).exists():
-        print(f"❌ Error: Template not found: {args.template}", file=sys.stderr)
-        sys.exit(1)
-
-
-    # Corregir root automáticamente si hace falta
-    try:
-        fixed = helpers.fixRootTag(args.xml_path)
-        if fixed:
-            print(f"⚠️  XML fixed: <root> tag automatically added.")
-    except (FileNotFoundError, ValueError) as e:
-        print(f"❌ Error: {e}", file=sys.stderr)
-        sys.exit(1)
-
-    # Salida base
-    salida_base = args.output or xml_path.stem
-
-    # Parseo
-    print(f"🔍 Parsing: {xml_path.name} ...")
-    try:
-        parserObj = PSProjectParser(str(xml_path))
-        projectObj = parserObj.parse()
-        # printToConsole(projectObj)        
-
-    except Exception as e:
-        print(f"❌ Error parsing XML: {e}", file=sys.stderr)
-        sys.exit(1)
-
-    # Generación
-    
-    gen = DocGenerator(projectObj, output_format = args.format, template_path=args.template)
-
-    if args.format in ("md"):
-        md_path = salida_base if salida_base.endswith(".md") else f"{salida_base}.md"
-        gen.to_markdown(md_path)
-
-    if args.format in ("docx"):
-        docx_path = salida_base if salida_base.endswith(".docx") else f"{salida_base}.docx"
-        gen.to_docx(docx_path)
-    
 
 if __name__ == "__main__":
     main()

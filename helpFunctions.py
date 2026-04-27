@@ -11,9 +11,9 @@ helpFunctions.py
 Funciones auxiliares para el proyecto pyPSPrintProject, incluyendo:
 - decodeFieldType: Convierte el código de tipo de campo a una descripción legible
 - decodRecordType: Convierte el código de tipo de registro a una descripción legible
-- decodePageType: Convierte el código de tipo de página a una descripción legible
-- decodeFieldFlags: Decodifica los bit del campo fUseEdit del XML para saber qué tipo de campo es
-- fixRootTag: Agrega un tag <root> envolvente al XML si no existe
+- decodePageType: Decodes the code of the page type (pageTypeStr_) to a readable description.
+- decodeFieldFlags: Decode the bits of the fUseEdit field from the XML to determine what type of field is.
+- fixRootTag: Add <root> tag that wraps the entire XML if it doesn't exist.
 
 Requisites:
     N/A
@@ -53,8 +53,7 @@ def decodeFieldType(fieldTypeStr_: str) -> str:
 
     return f"Unknown ({fieldTypeStr_})"
 
-def decodRecordType(recTypeStr_: str) -> str:
-
+def decodeRecordType(recTypeStr_: str) -> str:
     """
     Convierte el código de tipo de registro (recTypeStr_) a una descripción legible.
     :param recTypeStr_: Código de tipo de registro (string)
@@ -81,9 +80,9 @@ def decodRecordType(recTypeStr_: str) -> str:
 
 def decodePageType(pageTypeStr_: str) -> str:
     """
-    Convierte el código de tipo de página (pageTypeStr_) a una descripción legible.
-    :param pageTypeStr_: Código de tipo de página (string)
-    :return: Descripción legible del tipo de página
+    Decodes the code of the page type (pageTypeStr_) to a readable description.
+    :param pageTypeStr_: Code of the page type (string)
+    :return: Readable description of the page type
     """
 
     match pageTypeStr_:
@@ -102,17 +101,14 @@ def decodePageType(pageTypeStr_: str) -> str:
 
 def decodeFieldFlags(useEditValueNbr_ : int) -> dict:
     """
-    Decodifica los bit del campo fUseEdit del XML para saber qué tipo de campo es.
+    Decode the bits of the fUseEdit field from the XML to determine what type of field is.
 
-    Args:
-        useEditValueNbr_: valor numérico de la columna USEEDIT
-
-    Returns:
-        dict con:
-          - 'value':       el valor original
-          - 'bits':        lista de bit values que componen el valor
-          - 'flags':       lista de descripciones de cada flag activo
-          - 'description': string legible con todos los flags unidos por ' + '
+    :param useEditValueNbr_: numeric value of the USEEDIT column
+    :return: dict with the decoded field flags, including:
+          - 'value':       the original value
+          - 'bits':        list of bit values that compose the value
+          - 'flags':       list of descriptions for each active flag
+          - 'description': readable string with all flags joined by ' + '
     """
 
 
@@ -186,24 +182,14 @@ def decodeFieldFlags(useEditValueNbr_ : int) -> dict:
 
 def fixRootTag(filepath: str,backup: bool = True) -> bool:
     """
-    Agrega un tag <root> envolvente al XML si no existe.
-
-    Maneja correctamente:
-    - XMLs con declaración <?xml version="1.0"?>
-    - XMLs sin declaración
-    - XMLs que ya tienen un root válido (no los modifica)
-    - Encoding declarado en el XML
-
-    Args:
-        filepath:  Ruta al archivo XML a corregir.       
-        backup:    Si True, guarda una copia .bak antes de modificar.
-
-    Returns:
-        True si se modificó el archivo, False si ya era válido.
+    Add <root> tag that wraps the entire XML if it doesn't exist.
+    :param filepath: path to the XML file.
+    :param backup: If True, saves a backup copy with a .bak extension before modifying.
+    :return: True if the file was modified, False if it was already valid.
 
     Raises:
-        FileNotFoundError: Si el archivo no existe.
-        ValueError:        Si el archivo está vacío o no parece XML.
+        FileNotFoundError: If the file does not exist.
+        ValueError:        If the file is empty or does not appear to be XML.
     """
 
     # root_tag:  Nombre del tag raíz a insertar (default: "root").

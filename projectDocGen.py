@@ -321,6 +321,17 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         for pl in project.permission_lists
     ]
 
+    # --- Roles ---
+    roles = [
+        {
+            "name": r.name,
+            "description": r.description or "",
+            "permissions": r.permissions,
+            "permission_count": len(r.permissions),
+        }
+        for r in project.roles
+    ]    
+
     # --- Pages ---
     pages = [
         {
@@ -368,6 +379,19 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         for fl in project.file_layouts
     ]
 
+    # --- Portals ---
+    portals = [
+        {
+            "name": p.name,
+            "label": p.label or "",
+            "object_name": p.object_name,
+            "portal_type": p.portal_type,
+            "url": p.url or "",
+            "description": p.description or "",
+        }
+        for p in project.portals
+    ]
+
     # --- Queries ---
     queries = [
         {
@@ -394,11 +418,11 @@ def build_context(project: "PSProject", output_format: str) -> dict:
     app_engines = [
         {
             "name": ae.name,
-            "aeType": ae.aeType,
+            "ae_type": ae.ae_type,
             "description": ae.description or "",
-            "disRestart": ae.disRestart,
-            "aetRecords": ae.aetRecords,
-            "tempRecords": ae.tempRecords,
+            "disable_restart": ae.disable_restart,
+            "aet_records": ae.aet_records,
+            "temp_records": ae.temp_records,
             "sections": [ae_section_to_dict(s) for s in ae.sections],
             #"sections": ae.sections,
             "section_count": len(ae.sections),
@@ -433,7 +457,7 @@ def build_context(project: "PSProject", output_format: str) -> dict:
             "run_location": p.run_location or "",
             "parameters": p.parameters or "",
             "components": p.components or [],
-            "procGroups": p.procGroups or []
+            "process_groups": p.process_groups or []
         }
         for p in project.processes
     ]
@@ -441,9 +465,9 @@ def build_context(project: "PSProject", output_format: str) -> dict:
     # --- Jobs ---
     jobs = [
         {
-            "jobName": p.jobName,
-            "jobDescr": p.jobDescr,
-            "processList": p.processList
+            "job_name": p.job_name,
+            "job_descr": p.job_descr,
+            "process_list": p.process_list
         }
         for p in project.jobs
     ]
@@ -477,6 +501,18 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         for comp, evts in sorted(pc_by_comp.items())
     ]    
 
+    pc_by_cr: dict[str, list] = {}
+    for pc in project.peoplecode:
+        key = pc.component
+
+        if pc.code_type == "Component Record":
+            pc_by_cr.setdefault(key, []).append(pc_to_dict(pc, output_format))
+        
+    pc_cr_groups = [
+        {"component": comp, "events": evts}            
+        for comp, evts in sorted(pc_by_cr.items())
+    ]  
+
     pc_by_crf: dict[str, list] = {}
     for pc in project.peoplecode:
         # debug print (f"{pc.record_name}.{pc.field_name}.{pc.event_type}")
@@ -507,11 +543,11 @@ def build_context(project: "PSProject", output_format: str) -> dict:
     service_operations = [
         {
             "name": p.name,
-            "restMethod": p.restMethod,
+            "rest_method": p.rest_method,
             "description": p.description,
             "comments": p.comments,
-            "restBaseUrl": p.restBaseUrl,
-            "uriTemplates": p.uriTemplates
+            "rest_base_url": p.rest_base_url,
+            "uri_templates": p.uri_templates
         }
         for p in project.service_operations
     ]
@@ -546,11 +582,14 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         "msg_catalog":       len(msg_catalog),
         "file_layouts":      len(file_layouts),
         "permission_lists":  len(permission_lists),
+        "roles":             len(roles),
         "queries":           len(queries),
         "bi_reports":        len(bi_reports),
+        "portals":           len(portals),
         "total":             sum([
-            len(components),len(records), len(fields),len(project.pages), len(sql_objects), len(processes), len(jobs), len(project.peoplecode), len(ap_peoplecode_grp), \
-            len(service_operations), len(app_engines), len(msg_catalog), len(file_layouts), len(menus), len(permission_lists), len(queries), len(bi_reports)]
+            len(components),len(records), len(fields),len(project.pages), len(sql_objects), len(processes), len(jobs),\
+            len(project.peoplecode), len(ap_peoplecode_grp),  len(service_operations), len(app_engines), len(msg_catalog),\
+            len(file_layouts), len(menus), len(permission_lists), len(queries), len(bi_reports), len(roles), len(portals)]
         )
     }
 
@@ -573,6 +612,7 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         "jobs":               jobs,
         "peoplecode_groups":  peoplecode_groups,
         "pc_comp_groups":     pc_comp_groups,
+        "pc_cr_groups":       pc_cr_groups,
         "pc_crf_groups":      pc_crf_groups,
         "ap_peoplecode_grp":  ap_peoplecode_grp,
         "service_operations": service_operations,
@@ -581,6 +621,8 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         "permission_lists":   permission_lists,
         "queries":            queries,
         "bi_reports":         bi_reports,
+        "roles":              roles,
+        "portals":            portals,
     }
 
 
@@ -850,12 +892,12 @@ class MarkdownGenerator:
             for ae in ctx["app_engines"]:
                 a(f"### {ae['name']}")
                 a("")
-                a(f"**Type:** {ae['aeType']}  ")
+                a(f"**Type:** {ae['ae_type']}  ")
                 if ae["description"]:
                     a(f"**Description:** {ae['description']}  ")
-                a(f"**Disable Restart:** {'Yes' if ae['disRestart'] == 'Y' else 'No'}  ")
+                a(f"**Disable Restart:** {'Yes' if ae['disable_restart'] == 'Y' else 'No'}  ")
                 a(f"**State Records:**")
-                for aet in ae["aetRecords"]:
+                for aet in ae["aet_records"]:
                     a(f"Default: {aet.name} - Default: {aet.defRecord}")
 
                 a(f"**Sections:** {ae['section_count']}  ")
@@ -904,12 +946,12 @@ class MarkdownGenerator:
             a("## Job Definitions")
             a("")
             for job in ctx["jobs"]:
-                a(f"### {job['jobName']}")
+                a(f"### {job['job_name']}")
                 a("")
-                if job["jobDescr"]:
-                    a(f"**Descripción:** {job['jobDescr']}  ")
-                if job["processList"]:
-                    a(f"**Procesos:** {', '.join(job['processList'])}  ")
+                if job["job_descr"]:
+                    a(f"**Descripción:** {job['job_descr']}  ")
+                if job["process_list"]:
+                    a(f"**Procesos:** {', '.join(job['process_list'])}  ")
                 a("")
 
         # Service Operations
@@ -920,20 +962,20 @@ class MarkdownGenerator:
             for so in ctx["service_operations"]:
                 a(f"### {so['name']}")
                 a("")
-                a(f"**Método REST:** {so['restMethod']}  ")
-                if so["restBaseUrl"]:
-                    a(f"**Base URL:** {so['restBaseUrl']}  ")
+                a(f"**Método REST:** {so['rest_method']}  ")
+                if so["rest_base_url"]:
+                    a(f"**Base URL:** {so['rest_base_url']}  ")
                 if so["description"]:
                     a(f"**Descripción:** {so['description']}  ")
                 if so["comments"]:
                     a(f"**Comentarios:** {so['comments']}  ")
                 a("")
                 
-                if so["uriTemplates"]:
+                if so["uri_templates"]:
                     a("#### URI Templates")
                     a("")
-                    for uri in so["uriTemplates"]:
-                        a(f"- **{uri.get('uriSeq', 'N/A')}:** {uri.get('uriTemplate', '')}")
+                    for uri in so["uri_templates"]:
+                        a(f"- **{uri.get('uri_sequence', 'N/A')}:** {uri.get('uri_template', '')}")
                     a("")
 
         # Message Catalog

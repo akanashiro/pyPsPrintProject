@@ -6,7 +6,7 @@ Automated tool for generating professional documentation of PeopleSoft projects 
 [![MIT License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Status](https://img.shields.io/badge/status-active-brightgreen)]()
 
-![front](assets/screenshots/portada.png)
+![front](assets/screenshots/AppUI.png)
 
 ## 📋 Table of Contents
 
@@ -23,6 +23,10 @@ Automated tool for generating professional documentation of PeopleSoft projects 
 
 ## ✨ Features
 
+- 🚀 **UI** - UI built with PySide6 in mind
+  - If PySide6 is not installed, then fallbacks to Tkinter
+  - If Tkinter is not installed, then returns an error
+- ⚙️ **Command line** - now is ```main_cmd.py```
 - 📄 **Export to Markdown** - Generate readable and versionable documentation
 - 📘 **Export to Word** - Create professional documents with Jinja2 templates
 - 🔍 **XML Parser** - Automatically extract definitions from PeopleSoft projects
@@ -40,7 +44,7 @@ Automated tool for generating professional documentation of PeopleSoft projects 
 - **OS**: Windows, macOS or Linux
 
 ### PeopleSoft
-- **Application Designer**: Version 8.5x+
+- **Application Designer**: Recommended Version 8.58+
 - **Access**: Ability to export projects to XML
 - **Knowledge**: Basic familiarity with PeopleSoft project structure
 
@@ -71,8 +75,21 @@ pip install docxtpl>=0.16.0 python-docx>=0.8.11
 ### Verify installation
 
 ```bash
-python main.py --help
+python main_cmd.py --help
 ```
+
+### GUI requeriments
+**If you want to use Tkinter UI**
+```bash
+pip install tkinter  (generally included in Python)
+pip install ttkthemes
+```
+
+**If you want to use PySide6 UI**
+```bash
+ pip install PySide6
+```
+
 
 You should see the program help without errors.
 
@@ -87,17 +104,11 @@ python main.py MyProject.xml --format md --output MyProject.md
 
 **Result:** File `MyProject.md` with all definitions documented in Markdown format.
 
-```bash
-# Equivalent options (short form)
-python main.py MyProject.xml -f md -o MyProject.md
-```
 
 ### Generate Word documentation
 
 ```bash
-python main.py MyProject.xml --format docx \
-  --template assets/project_template.docx \
-  --output MyProject.docx
+python main.py MyProject.xml --format docx --template assets/project_template.docx --output MyProject.docx
 ```
 
 **Requirement:** Word template with Jinja2 variables such as:
@@ -109,23 +120,6 @@ python main.py MyProject.xml --format docx \
 
 ```bash
 python main.py --help
-
-# Expected output:
-# usage: main.py [-h] [--format {docx,md}] [--template TEMPLATE] [--output OUTPUT] xml_path
-#
-# Documentation generator for PeopleSoft projects
-#
-# positional arguments:
-#   xml_path          Path to XML file exported from Application Designer
-#
-# optional arguments:
-#   -h, --help        show this help message and exit
-#   --format {docx,md}, -f {docx,md}
-#                     Output format: docx or md (default: md)
-#   --template TEMPLATE, -t TEMPLATE
-#                     Path to .docx template with Jinja2 markers
-#   --output OUTPUT, -o OUTPUT
-#                     Output path (extension added automatically)
 ```
 
 ## ⚙️ Configuration
@@ -143,16 +137,25 @@ python main.py --help
 
 ```bash
 # Simple Markdown
-python main.py project.xml
+python main_cmd.py project.xml
 
 # Markdown with specific output
-python main.py project.xml -f md -o docs/project.md
+python main_cmd.py project.xml -f md -o docs/project.md
 
 # Word with custom template
-python main.py project.xml -f docx -t my_template.docx -o output.docx
+python main_cmd.py project.xml -f docx -t my_template.docx -o output.docx
 
 # Using absolute paths (recommended for files in other folders)
-python main.py /full/path/project.xml -o /output/path/project.md
+python main_cmd.py /full/path/project.xml -o /output/path/project.md
+
+# Using GUI (QT interface, fallbacks to Tkinter)
+python main.py 
+
+# Explicitly use QT
+python mainTk.py
+
+# Explicitly use Tkinter
+python mainTk.py
 ```
 
 ### Customize Word templates
@@ -174,16 +177,18 @@ Definitions:
 
 ```
 pyPsPrintProject/
-├── main.py                    # Entry point (CLI)
-├── projectParser.py           # XML parser → Python classes (87 KB)
-├── projDocGen.py              # MD/DOCX document generator (37 KB)
-├── helperFunctions.py         # Helper functions (6.5 KB)
+├── main_cmd.py                # Entry point (CLI)
+├── main.py                    # Call graphical interface
+├── mainQt.py                  # UI built for PySide6 toolkit
+├── mainTk.py                  # UI built for Tkinter toolkit
+├── projectParser.py           # Converts XML to Python objects (PSProject, PSField, PSRecord, etc)
+├── projectDocGen.py           # Generates Markdown or Word from Python objects
+├── helperFunctions.py         # Helper functions. Translates PeopleSoft codes (field types, flags, etc)
 ├── requirements.txt           # Python dependencies
 ├── LICENSE                    # MIT License
-├── README.md                  # This file
+└── README.md                  # This file
 └── assets/
-    ├── project_template.docx  # Example Word template
-    └── screenshots/           # Documentation screenshots
+    └── project_template.docx  # Example Word template
 ```
 
 ### Data flow
@@ -195,17 +200,10 @@ projectParser.py (XML parser)
     ↓
 PSProject + definitions (Python classes)
     ↓
-projDocGen.py (generator)
+projectDocGen.py (generator)
     ↓
 file.md or file.docx
 ```
-
-### Main modules
-
-- **projectParser.py**: Converts XML to Python objects (PSProject, PSField, PSRecord, etc)
-- **projDocGen.py**: Generates Markdown or Word from Python objects
-- **helperFunctions.py**: Translates PeopleSoft codes (field types, flags, etc)
-- **main.py**: Command-line interface (CLI)
 
 ## 📊 Supported Definitions
 
@@ -213,8 +211,8 @@ file.md or file.docx
 
 | Object | Details | Notes |
 |---|---|---|
-| **Field** | Definition + Translate values | Types: Char, Long Char, Number, Date, Time, DateTime, Image |
-| **Record** | Definition + PeopleCode + SQL View | For Views: auto-generates SELECT |
+| **Field** | Definition + Translate values | - |
+| **Record** | Definition + PeopleCode + SQL View | - |
 | **Page** | Complete definition | Includes nested components |
 | **Component** | Definition + PeopleCode + Record Field PC | PeopleCode nesting |
 | **Application Engine** | Do While, Do Select, Do When, Do Until | Includes sections and call sections |
@@ -225,32 +223,15 @@ file.md or file.docx
 | **BI Publisher Report** | Basic definition | - |
 | **Message Catalog** | Error/warning messages | - |
 | **Menu** | Definition and structure | - |
+| **Role** | Definition and permission list | - |
 | **Permission List** | Users and access | Without menu.comp.pages (too much volume) |
 | **PS Query** | Basic definition | - |
 | **Application Package** | PeopleCode | - |
+| **Content Reference** | Folder and Content definition | Basic information |
 
 ![ae](assets/screenshots/ae.png)
 
-### Partially supported ⚠️
-
-| Object | Limitation | Workaround |
-|---|---|---|
-| **App Package** | Doesn't generate App Package info | Document manually |
-| **Page** | Doesn't generate any image | Document manually |
-| **PS Query** | Doesn't distinguish public/private. Doesn't generate SQL| Document manually |
-| **REST Service** | Only Operation, not other types | Document manually  |
-| **App Engine Steps** | Requires parent section in XML | Export complete section |
-| **Record Translate** | Depends on parent Field | Include Field in export |
-
-### Not supported ❌
-
-| Object | Reason | Alternative |
-|---|---|---|
-| **CSS Styles** | Not relevant for documentation | Document manually |
-| **Icons** | Not relevant for documentation | Document manually |
-| **Component Record PeopleCode | Not implemented yet | Document manually  |
-| **Roles** | Not implemented yet | Document manually  |
-| **Content Reference** | Not implemented yet | Document manually |
+For partially supported and not supporte definitions, go to CHANGELOG.md
 
 ## ⚠️ Known Limitations
 
@@ -385,15 +366,8 @@ The project is freely available for commercial, personal and educational use.
 ## 🙏 Acknowledgments
 
 - Partners at work
-- Jinja2 and python-docx for excellent libraries
 
 ---
 
 **Use in production?**
 Not 100% functional but usable.
-
-**Planned future improvements:**
-- [ ] Standardize code
-- [ ] Refactoring
-- [x] Automate ```<root>``` tag addition to XML
-- [ ] GUI (graphical interface)

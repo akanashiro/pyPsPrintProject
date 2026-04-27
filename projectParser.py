@@ -158,11 +158,11 @@ class MenuDefinitionSec:
     This class represents Menu definition security.
     """
     name : str
-    barName : str
-    barItemName : str
-    pnlItemName : str
-    displayOnly : str
-    authFlags : str
+    bar_name : str
+    bar_item_name : str
+    pnl_item_name : str
+    display_only : str
+    auth_flags : str
 
 @dataclass
 class PermissionListDefinition:
@@ -172,6 +172,21 @@ class PermissionListDefinition:
     name: str
     description: Optional[str] = None
     menu_items: list[MenuDefinitionSec] = field(default_factory=list)
+
+@dataclass
+class RoleDefinition:
+    name: str
+    description: Optional[str] = None
+    permissions: list[str] = field(default_factory=list)
+
+@dataclass
+class PortalDefinition:
+    name: str
+    portal_type: str
+    object_name: str
+    label: str
+    url: Optional[str] = None
+    description: Optional[str] = None
 
 @dataclass
 class PageControl:
@@ -320,10 +335,10 @@ class AppEngineSection:
 @dataclass
 class AppEngineProgram:
     name: str
-    aeType: str      # Standard, Daemon, etc.
-    disRestart: str
-    aetRecords: list[aetRecord] = field(default_factory=list)
-    tempRecords: list[str] = field(default_factory=list)
+    ae_type: str      # Standard, Daemon, etc.
+    disable_restart: str
+    aet_records: list[aetRecord] = field(default_factory=list)
+    temp_records: list[str] = field(default_factory=list)
     sections: list[AppEngineSection] = field(default_factory=list)
     #peoplecode: list[PeopleCodeEvent] = field(default_factory=list)
     #sql: list[SQLDefinition] = field(default_factory=list)
@@ -338,7 +353,7 @@ class ProcSecComp:
 
 @dataclass
 class ProcSecGroups:
-    processGroup: str =""
+    process_group: str =""
 
 @dataclass
 class ProcessDefinition:
@@ -348,7 +363,7 @@ class ProcessDefinition:
     run_location: Optional[str] = None
     parameters: Optional[str] = None
     components: [ProcSecComp] = None
-    procGroups: [ProcSecGroups] = None
+    process_groups: [ProcSecGroups] = None
 
     def getProcessInfo(self):
         print (f"  🗂️  Process: {self.name}\n  📄 Description: {self.description}\n  📄 Type: {self.process_type}\n  📄 Run Location: {self.run_location}")
@@ -358,33 +373,33 @@ class ProcessDefinition:
 # ============================================================================
 @dataclass
 class JobProcessDefinition:
-    jobSeqNbr: str
-    procType: str
-    procName: str
+    job_seq_nbr: str
+    process_type: str
+    process_name: str
 
 @dataclass
 class JobDefinition:
-    jobName: str
-    jobDescr: str
-    processCat: str
-    processList: [JobProcessDefinition] = None
+    job_name: str
+    job_descr: str
+    process_category: str
+    process_list: [JobProcessDefinition] = None
 
 # ============================================================================
 # Service Operation Classes
 # ============================================================================
 @dataclass
 class uriTemplateDefinition:
-    uriSeq: str
-    uriTemplate: str
+    uri_sequence: str
+    uri_template: str
 
 @dataclass
 class serviceOperationDefinition:
     name: str
-    restMethod: str
+    rest_method: str
     description: str
-    restBaseUrl: str
+    rest_base_url: str
     comments: Optional[str] = None    
-    uriTemplates: [uriTemplateDefinition] = None
+    uri_templates: [uriTemplateDefinition] = None
 
 # ============================================================================
 # BI Publisher
@@ -428,17 +443,19 @@ class PSProject:
     permission_lists: list[PermissionListDefinition] = field(default_factory=list)
     queries: list[QueryDefinition] = field(default_factory=list)
     bi_reports: list[BIReportDefinition] = field(default_factory=list)
-    components: list[ComponentDefinition] = field(default_factory=list)    
+    components: list[ComponentDefinition] = field(default_factory=list)
+    roles: list[RoleDefinition] = field(default_factory=list)
+    portals: list[PortalDefinition] = field(default_factory=list)    
     """    
     app_packages: list[AppPackageDefinition] = field(default_factory=list)
     style_sheets: list[StyleSheetDefinition] = field(default_factory=list)
-    roles: list[RoleDefinition] = field(default_factory=list)
-    portals: list[PortalDefinition] = field(default_factory=list)
+
+
     others: list[GenericDefinition] = field(default_factory=list)
     """
 
 
-    def _getRecFieldDefinition(self, recordNameStr_: str, row_) -> list[RecordField]:
+    def _getRecFieldDefinition(self, recordNameStr_: str, row_) -> list[RecordField]| None:
 
         """
         Gets Record.Field definition from XML
@@ -460,6 +477,17 @@ class PSProject:
                 nLengthStr = fieldRow.findtext("nLength", default="").strip()
                 nDecimalPosStr = fieldRow.findtext("nDecimalPos", default="").strip()
                 fUseEditNbr = int(fieldRow.findtext("fUseEdit", default="0").strip())
+
+                # Get default Field Label        
+                defaultLabelStr = ""                   
+                labelNode = fieldRow.find(".//hDBFldLabel/rowset[@name='DBFldLabel']")
+                if labelNode is not None:
+                    for labelRow in labelNode.findall("row"):
+                        if labelRow.findtext("bIsDefault", default="0").strip() == "1":
+                            defaultLabelStr = labelRow.findtext("atmLabelID", default="").strip()
+                            break
+
+                # Obtain field flags by decoding fUseEditNbr
                 decodeResultArray = helpers.decodeFieldFlags(fUseEditNbr)
 
                 # Output esperado:
@@ -514,12 +542,14 @@ class PSProject:
                     is_required = isReqBool,
                     is_from_search = isFromSrchBool,
                     is_audit = isAuditBool,
+                    label = defaultLabelStr
                 ) 
                             
 
                 fieldObjs.append(recordFieldObj)
 
             return fieldObjs
+
 
     def _getRecordDefinition(self, recordNameStr_: str, rootNode_) -> RecordDefinition | None:
 
@@ -543,7 +573,7 @@ class PSProject:
                         if szRecNameStr == recordNameStr_:
                             eRecTypeStr = row.findtext("eRecType", default="").strip()
 
-                            recTypeDescrStr = helpers.decodRecordType(eRecTypeStr)
+                            recTypeDescrStr = helpers.decodeRecordType(eRecTypeStr)
 
                             szRecDescrStr = row.findtext("szRecDescr", default="").strip() 
                             szParentRecNameStr = row.findtext("szParentRecName", default="").strip() 
@@ -570,6 +600,14 @@ class PSProject:
         return None
 
     def _getTranslateValues(self, fieldNameStr_: str, rootNode_) -> list[TranslateValue] | None:
+
+        """
+        Gets Translate Values from a field
+
+        :param fieldNameStr_: Field Name
+        :param rootNode_: where cursor is positioned
+        :return: a list of TranslateValue object
+        """
 
         translateValues = []
         for instance in rootNode_.iter("instance"):            
@@ -600,6 +638,14 @@ class PSProject:
         return None
 
     def _getFieldDefinition(self, fieldNameStr_: str, rootNode_) -> FieldDefinition | None:
+
+        """
+        Gets Field definition
+
+        :param fieldNameStr_: Field Name
+        :param rootNode_: where cursor is positioned
+        :return: a Field Definition object
+        """
 
         xlatDict = []
         for instance in rootNode_.iter("instance"):            
@@ -637,6 +683,15 @@ class PSProject:
 
     def _getProcessDefinition(self, processTypeStr_: str, processNameStr_: str, rootNode_) -> ProcessDefinition | None:
 
+        """
+        Gets Process definition
+
+        :param processTypeStr_: Process Type
+        :param processNameStr_: Process Name
+        :param rootNode_: where cursor is positioned
+        :return: a Process Definition object
+        """
+
         for instance in rootNode_.iter("instance"):            
             if instance.get("class") == "PSD":         
                 procDefnNode = instance.find(".//rowset[@name='PsdDefn']")
@@ -671,7 +726,7 @@ class PSProject:
                                 for procGrouprow in procGroupNode.findall("row"):
                                     szPrcsGrpStr = procGrouprow.findtext("szPrcsGrp", default="").strip() # Process Groups
                                     procGrpObj = ProcSecGroups(
-                                        processGroup = szPrcsGrpStr
+                                        process_group = szPrcsGrpStr
                                     )
                                     # print(f"{szPrcsGrpStr}")
                                     procGrpDict.append(procGrpObj)                                    
@@ -683,13 +738,22 @@ class PSProject:
                                 run_location = szRunLocationStr,
                                 parameters = szParmListStr,
                                 components = componentDict,
-                                procGroups = procGrpDict
+                                process_groups = procGrpDict
                             )
 
                             return procDefnObj
         return None
 
     def _getJobDefinition(self, jobNameStr_: str, rootNode_) -> JobDefinition | None:
+
+        """
+        Gets Job definition
+
+        :param jobNameStr_: Job Name
+        :param rootNode_: where cursor is positioned
+        :return: a Job Definition object
+        """
+
         for instance in rootNode_.iter("instance"):
             if instance.get("class") == "PSJ":
                 jobDefnNode = instance.find(".//rowset[@name='PsjDefn']")
@@ -712,22 +776,31 @@ class PSProject:
                                     szPrcsNameStr = procRow.findtext("szPrcsName", default="").strip()                                    
 
                                     jobProcObj = JobProcessDefinition(
-                                        jobSeqNbr = nJobSeqStr,
-                                        procType = szPrcsTypeStr,
-                                        procName = szPrcsNameStr
+                                        job_seq_nbr = nJobSeqStr,
+                                        process_type = szPrcsTypeStr,
+                                        process_name = szPrcsNameStr
                                     )
                                     jobProcArray.append(jobProcObj)
                             
                             jobDefnObj = JobDefinition(
-                                jobName = jobNameStr_,
-                                jobDescr = szDescrStr,
-                                processCat = szPrcsCategoryStr,
-                                processList = jobProcArray
+                                job_name = jobNameStr_,
+                                job_descr = szDescrStr,
+                                process_category = szPrcsCategoryStr,
+                                process_list = jobProcArray
                             )
                             return jobDefnObj
         return None
 
     def _getSQLDefinition(self, sqlNameStr_: str, sqlTypeStr_: str, rootNode_) -> SQLDefinition | None:
+
+        """
+        Gets SQL definition
+
+        :param sqlNameStr_: SQL Name
+        :param sqlTypeStr_: SQL Type
+        :param rootNode_: where cursor is positioned
+        :return: a SQL Definition object
+        """
 
         # Initialize variables
         sqlTypeStr=""
@@ -786,6 +859,19 @@ class PSProject:
 
     def _getAEPeopleCode(self, objectValue0_: str, objectValue1_: str, objectValue2_: str, objectValue3_: str, objectValue4_:str, objectValue5_:str, objectValue6_:str, rootNode_) -> AEPeopleCode | None:
 
+        """
+        Gets Application Engine PeopleCode
+
+        :param objectValue1_: Application Engine Name
+        :param objectValue2_: Section Name
+        :param objectValue3_: Market
+        :param objectValue4_: default
+        :param objectValue5_: Effective Date
+        :param objectValue6_: Step Name
+        :param rootNode_: where cursor is positioned
+        :return: a Application Engine PeopleCode object
+        """
+
         for instance in rootNode_.iter("instance"):                       
             if instance.get("class") == "PCM":
                 pcNode = instance.find(".//rowset[@name='PcmProg']")                
@@ -819,6 +905,20 @@ class PSProject:
         return None
 
     def _getEventPeopleCode(self, objectValue0_: str, objectValue1_: str, objectValue2_: str, objectValue3_: str, objectValue4_:str , eventTypeStr_: str, rootNode_) -> PeopleCodeEvent | None:
+
+
+        """
+        Gets Event PeopleCode
+
+        :param objectValue0_: Record Name or Component Name
+        :param objectValue1_: Field or Market
+        :param objectValue2_: Event Type 
+        :param objectValue3_: Event when Component Record | Field when Component Record Field
+        :param objectValue4_: Event when Component Record Field
+        :param eventTypeStr_: REC (Record), CMP (Component), CR (Component Record), CRF (Component Record Field)
+        :param rootNode_: where cursor is positioned
+        :return: a PeopleCode object
+        """
 
         # Inicialización de variables
         recordNameStr = ""
@@ -1001,19 +1101,19 @@ class PSProject:
                                     uriTemplateElement = uriTemplRow.find("lpszURITemplate/rowset/row/lpszURITemplate")
                                     uriTemplateStr = uriTemplateElement.text if uriTemplateElement is not None and uriTemplateElement.text else ""
                                     uriTemplateObj = uriTemplateDefinition(
-                                        uriSeq  = uriSeqStr,
-                                        uriTemplate = uriTemplateStr
+                                        uri_sequence  = uriSeqStr,
+                                        uri_template = uriTemplateStr
                                     )
                                     uriTemplateArray.append(uriTemplateObj)
                                     # print(f"{uriTemplateStr}")
 
                             serviceOperObj = serviceOperationDefinition(
                                 name = serviceOpDefStr_,
-                                restMethod = restMethodStr,
+                                rest_method = restMethodStr,
                                 description = szDescrStr,
                                 comments = operDescrStr,
-                                restBaseUrl = restBaseUrlStr,
-                                uriTemplates = uriTemplateArray
+                                rest_base_url = restBaseUrlStr,
+                                uri_templates = uriTemplateArray
                             )
                         
                             return serviceOperObj
@@ -1254,11 +1354,11 @@ class PSProject:
             
             aeObj = AppEngineProgram(
                 name = appEngineStr_,
-                aeType = aeTypeStr,
-                aetRecords = aetDict,
-                tempRecords = tempDict,
+                ae_type = aeTypeStr,
+                aet_records = aetDict,
+                temp_records = tempDict,
                 sections =  aeSectionDict,
-                disRestart = disableRestartStr,
+                disable_restart = disableRestartStr,
                 description = aeDescrStr,
                 # peoplecode: list[PeopleCodeEvent] = field(default_factory=list)
             )
@@ -1405,7 +1505,7 @@ class PSProject:
                         descrStr = plRow.findtext("szClassDefnDescr", default="").strip()
 
                         itemsDict = []
-                        """
+                        """ Not used for now. It generates a huge amount of information.
                         if permListStr == permissionListStr_:                           
                             plAuthItemNode = plNode.find(".//hAit/rowset[@name='ClmAuthItem']")
 
@@ -1420,11 +1520,11 @@ class PSProject:
                                 
                                 authItemObj = MenuDefinitionSec(
                                     name = authMenuStr,
-                                    barName = authBarStr,
-                                    barItemName = authBarItemStr,
-                                    pnlItemName = authPnlItemStr,
-                                    displayOnly = displayOnlyStr,
-                                    authFlags = authFlagsStr  
+                                    bar_name = authBarStr,
+                                    bar_item_name = authBarItemStr,
+                                    pnl_item_name = authPnlItemStr,
+                                    display_only = displayOnlyStr,
+                                    auth_flags = authFlagsStr  
                                 )
                                 
                                 itemsDict.append(authItemObj)
@@ -1514,6 +1614,74 @@ class PSProject:
                                 return componentDefnObj
         return None
 
+    def _getRoleDefinition(self, roleNameStr_: str, rootNode_) -> RoleDefinition | None:
+        for instance in rootNode_.iter("instance"):            
+            if instance.get("class") == "ROLM":         
+                roleNode = instance.find(".//rowset[@name='Roledefn']")
+
+                if roleNode is not None:
+                    for roleRow in roleNode.findall("row"):
+                        szRoleNameStr = roleRow.findtext("szRolename", default="").strip()
+                        
+                        if szRoleNameStr == roleNameStr_:
+                            szDescrStr = roleRow.findtext("szDescr", default="").strip() 
+                            
+                            # Permission lists
+                            permissionsDict = []
+                            classNode = roleNode.find(".//pRoleclass/rowset[@name='Roleclass']")
+                            if classNode is not None:
+                                for classRow in classNode.findall("row"):
+                                    classStr = classRow.findtext("szClassid", default="").strip()
+                                    permissionsDict.append(classStr)                                    
+                            
+                            roleDefnObj = RoleDefinition(
+                                name = roleNameStr_,
+                                description = szDescrStr,
+                                permissions = permissionsDict
+                            )
+
+                            return roleDefnObj
+        return None
+
+    def _getPortalDefinition(self, portalNameStr_: str, portalTypeStr_: str, objectValue2_: str, rootNode_) -> PortalDefinition | None:
+        for instance in rootNode_.iter("instance"):            
+            if instance.get("class") == "PRSM":         
+                portalNode = instance.find(".//rowset[@name='PrsmDefn']")
+
+                if portalNode is not None:
+                    for portalRow in portalNode.findall("row"):
+                        portalNameStr = portalRow.findtext("szPortalName", default="").strip()
+                        objNameStr =  portalRow.findtext("szObjName", default="").strip()
+                        portalTypeStr = portalRow.findtext("cRefType", default="").strip()
+                                                    
+                        if portalNameStr == portalNameStr_ and portalTypeStr == portalTypeStr_ and objNameStr == objectValue2_:
+                            descrStr = portalRow.findtext("szDescr", default="").strip() 
+                            labelNameStr = portalRow.findtext("szLabelName", default="").strip()
+
+                            urlNode = portalRow.find(".//pszURLLogical/rowset[@name='char']")
+                            if urlNode is not None:
+                                for urlRow in urlNode.findall("row"):
+                                    urlStr = urlRow.findtext("pszURLLogical", default="").strip()
+                            else:
+                                urlStr = ""
+
+                            if portalTypeStr_ == "C":
+                                portalStr = "Content Reference"
+                            elif portalTypeStr_ == "F":
+                                portalStr = "Folder"
+
+                            portalDefnObj = PortalDefinition(
+                                name = portalNameStr_,
+                                object_name = objNameStr,
+                                portal_type = portalStr,
+                                label = labelNameStr,
+                                url = urlStr,
+                                description = descrStr
+                            )
+
+                            return portalDefnObj
+        return None
+
     def _describeItems(self, objectTypeNode_, objectValue0_, objectValue1_, objectValue2_, objectValue3_, objectValue4_, rootNode_):
 
         """
@@ -1524,19 +1692,21 @@ class PSProject:
 
         match objectTypeNode_:
             case "0":
-                # Definición de Record. Se debe obtener toda la información del record, incluyendo sus campos asociados.
+                # Record Definition and its fields
                 resultObj = self._getRecordDefinition(objectValue0_, rootNode_)
                 if resultObj is not None:
                     self.records.append(resultObj)                
             case "2":
-                # Definición de Field.
-                resultObj = self._getFieldDefinition(objectValue0_, rootNode_)
-                if resultObj is not None:
-                    self.fields.append(resultObj)
-            #case "4":
-            #    print(f"📄 Page: {objectValue_}")
+                # Field Definition.
+                # ObjectValue1 empty means it's the default definition of the field.
+                if objectValue1_ == "":
+                    resultObj = self._getFieldDefinition(objectValue0_, rootNode_)
+                    if resultObj is not None:
+                        self.fields.append(resultObj)
+            case "4":
+                print(f"📄 Xlat of {objectValue0_} handled in Field Definition")
             case "5":
-                # Page   
+                # Page Defition
                 resultObj = self._getPageDefinition(objectValue0_, rootNode_)       
                 if resultObj is not None:
                     self.pages.append(resultObj)
@@ -1550,7 +1720,6 @@ class PSProject:
                 resultObj = self._getComponentDefinition(objectValue0_, objectValue1_, rootNode_)
                 if resultObj is not None:
                     self.components.append(resultObj)
-                # print(f"🔹 Component: {objectValue0_}")
             case "8":
                 # Record PeopleCode
                 resultObj = self._getEventPeopleCode(objectValue0_, objectValue1_, objectValue2_, objectValue3_, "", "REC", rootNode_)
@@ -1561,15 +1730,18 @@ class PSProject:
                 resultObj = self._getQueryDefinition(objectValue0_, rootNode_)
                 if resultObj is not None:
                     self.queries.append(resultObj)
-            case "14":
-                print(f"📄 Message Catalog: {objectValue0_}" )                
+            case "19":
+                # Role Definition
+                resultObj = self._getRoleDefinition(objectValue0_, rootNode_)
+                if resultObj is not None:
+                    self.roles.append(resultObj)
             case "20":
-                # Process
+                # Process Definition
                 resultObj = self._getProcessDefinition(objectValue0_, objectValue1_, rootNode_)
                 if resultObj is not None:
                     self.processes.append(resultObj)
             case "23":
-                # Job
+                # Job Definition
                 resultObj = self._getJobDefinition(objectValue0_, rootNode_)
                 if resultObj is not None:
                     self.jobs.append(resultObj)             
@@ -1578,8 +1750,6 @@ class PSProject:
                 resultObj = self._getMsgCatalog(objectValue0_, objectValue1_, rootNode_)
                 if resultObj is not None:
                     self.msg_catalog.append(resultObj)                 
-            case "26":
-                print(f"📄 Process Definition: {objectValue0_}") 
             case "29":
                 print(f"📄 Application Package: {objectValue0_}")
             case "30":
@@ -1598,10 +1768,10 @@ class PSProject:
                 resultObj = self._getAppEngine(objectValue0_, rootNode_)
                 if resultObj is not None:
                     self.app_engines.append(resultObj)
-            # case "34":
-            #    print(f"📄 Application Engine Section: {objectValue0_}")
-            #case "43":
-            #    print(f"📄 Application Engine Step: {objectValue0_}")
+            case "34":
+                print(f"📄 Application Engine Section: {objectValue0_} handled in Application Engine Defintion")
+            case "43":
+                print(f"📄 Application Engine Step: {objectValue0_} handled in Application Engine Defintion")
             case "40":
                 print(f"📄 Service Operation: {objectValue0_}")
             case "46":
@@ -1624,9 +1794,12 @@ class PSProject:
                 resultObj = self._getPermissionList(objectValue0_, rootNode_)
                 if resultObj is not None:
                     self.permission_lists.append(resultObj)
-                #print(f"Permission list?: {objectValue0_}")         
             case "54":
                 print(f"📄 Activity Guide?: {objectValue0_}")
+            case "55":
+                resultObj = self._getPortalDefinition(objectValue0_, objectValue1_, objectValue2_, rootNode_)
+                if resultObj is not None:
+                    self.portals.append(resultObj)
             case "58":                
                 if objectValue3_ =="":
                     resultObj = self._getAppPackagePeopleCode(objectValue0_, objectValue1_, objectValue2_, "OnExecute", rootNode_)
@@ -1639,7 +1812,7 @@ class PSProject:
             case "66":
                 print(f"📄 Style Sheet: {objectValue0_}")
             case "80":
-                # Definición de Service Operation
+                # Service Operation
                 resultObj = self._getServiceOpDef(objectValue0_, rootNode_)
                 if resultObj is not None:
                     self.service_operations.append(resultObj)
@@ -1647,10 +1820,10 @@ class PSProject:
                 resultObj = self._getBIReportDefinition(objectValue0_, rootNode_)
                 if resultObj is not None:
                     self.bi_reports.append(resultObj)
-            case "104":
-                print(f"📄 Unknown: {objectValue0_}")
             case "116":
                 print(f"📄 Integration Broker: {objectValue0_}")
+            case _:
+                print(f"📄 Unhandled object type: {objectTypeNode_} {objectValue0_}")
         return None
 
 
@@ -1702,7 +1875,6 @@ def getProject(xml_path: str)  -> PSProject  | None:
                             objectValue3 = row.findtext("szObjectValue_3", default="").strip()
                             objectValue4 = row.findtext("szObjectValue_3", default="").strip()                            
 
-                            # Debug print(f"Procesando item: ObjectType={objectTypeNode}, ObjectValue0={objectValue0}, ObjectValue1={objectValue1}, ObjectValue2={objectValue2}, ObjectValue3={objectValue3}")                            
                             projectObj._describeItems(objectTypeNode, objectValue0, objectValue1, objectValue2, objectValue3, objectValue4, root)
 
                     return projectObj
