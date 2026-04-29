@@ -48,11 +48,6 @@ Automated tool for generating professional documentation of PeopleSoft projects 
 - **Access**: Ability to export projects to XML
 - **Knowledge**: Basic familiarity with PeopleSoft project structure
 
-### Verify Python version
-```bash
-python --version
-```
-
 ## 📦 Quick Start
 
 ### Option 1: Install from source
@@ -193,17 +188,11 @@ pyPsPrintProject/
 
 ### Data flow
 
+```mermaid
+graph LR
+    A([Read file.xml]) --> B[projectParser.py XML parser] --> D[projectDocGen.py generator] --> E([Write file.md or file.docx])
 ```
-file.xml 
-    ↓
-projectParser.py (XML parser)
-    ↓
-PSProject + definitions (Python classes)
-    ↓
-projectDocGen.py (generator)
-    ↓
-file.md or file.docx
-```
+
 
 ## 📊 Supported Definitions
 
@@ -253,72 +242,11 @@ AE actions are only documented if their parent section is included.
 ### English only
 Currently the tool only generates documentation in English.
 
-**Solution:** Contributions welcome to add languages.
-
-### Performance with very large projects
-Projects with >500 definitions may take a few seconds.
-
-**Solution:** Normal, due to XML parsing and document generation.
 
 ## 🐛 Troubleshooting
 
-### Error: "Cannot find file: MyProject.xml"
-```
-❌ Error: File not found: MyProject.xml
-```
-
-**Causes:**
-- File does not exist in that location
-- Incorrect or relative path
-
-**Solution:**
-```bash
-# Use absolute path
-python main.py C:/Users/me/Documents/MyProject.xml
-
-# Or navigate to the folder first
-cd C:/Users/me/Documents/
-python main.py MyProject.xml
-```
-
----
-
-### Error: "ModuleNotFoundError: No module named 'docxtpl'"
-```
-❌ ModuleNotFoundError: No module named 'docxtpl'
-```
-
-**Cause:** Dependencies not installed.
-
-**Solution:**
-```bash
-pip install -r requirements.txt
-# Or manually:
-pip install docxtpl python-docx
-```
-
----
-
-### Error: "--template required for DOCX format"
-```
-❌ Error: --template is required to generate DOCX.
-```
-
-**Cause:** Missing Word template when using `-f docx`.
-
-**Solution:**
-```bash
-# Include template
-python main.py project.xml -f docx -t template.docx
-
-# Or use example template
-python main.py project.xml -f docx -t assets/project_template.docx
-```
-
----
-
 ### DOCX document comes out blank
-**Cause:** Template does not have Jinja2 variables or they are incorrectly named.
+**Cause:** If you edited template, it may not not have Jinja2 variables or they are incorrectly named.
 
 **Solution:**
 1. Edit template in Word
