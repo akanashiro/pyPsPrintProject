@@ -6,7 +6,7 @@ Automated tool for generating professional documentation of PeopleSoft projects 
 [![MIT License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Status](https://img.shields.io/badge/status-active-brightgreen)]()
 
-![front](assets/screenshots/AppUI.png)
+![front](images/AppUI.png)
 
 ## 📋 Table of Contents
 
@@ -172,18 +172,9 @@ Definitions:
 
 ```
 pyPsPrintProject/
-├── main_cmd.py                # Entry point (CLI)
-├── main.py                    # Call graphical interface
-├── mainQt.py                  # UI built for PySide6 toolkit
-├── mainTk.py                  # UI built for Tkinter toolkit
-├── projectParser.py           # Converts XML to Python objects (PSProject, PSField, PSRecord, etc)
-├── projectDocGen.py           # Generates Markdown or Word from Python objects
-├── helperFunctions.py         # Helper functions. Translates PeopleSoft codes (field types, flags, etc)
-├── requirements.txt           # Python dependencies
-├── LICENSE                    # MIT License
-└── README.md                  # This file
-└── assets/
-    └── project_template.docx  # Example Word template
+├── bin                        # Binary programs (Windows only for now)
+├── images                     # Screenshots
+└── src                        # Source files
 ```
 
 ### Data flow
@@ -218,7 +209,7 @@ graph LR
 | **Application Package** | PeopleCode | - |
 | **Content Reference** | Folder and Content definition | Basic information |
 
-![ae](assets/screenshots/ae.png)
+![ae](images/ae.png)
 
 For partially supported and not supporte definitions, go to CHANGELOG.md
 

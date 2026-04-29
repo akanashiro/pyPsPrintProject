@@ -1,6 +1,0 @@
-# pyPsPrintProject - Dependencias Python
-# 
-# Instalar con: pip install -r requirements.txt
-
-docxtpl>=0.16.0
-python-docx>=0.8.11
