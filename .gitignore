@@ -6,3 +6,5 @@ __pycache__/
 /*.doc
 /*.xml
 !README.md
+!CHANGELOG.md
+!LICENSE
