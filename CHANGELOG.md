@@ -2,6 +2,27 @@
 
 This file logs major changes made in this project
 
+### Fully supported ✅
+
+| Object | Details | Notes |
+|---|---|---|
+| **Field** | Definition + Translate values | - |
+| **Record** | Definition + PeopleCode + SQL View | - |
+| **Page** | Complete definition | Includes nested components |
+| **Component** | Definition + PeopleCode + Record Field PC | PeopleCode nesting |
+| **Application Engine** | Do While, Do Select, Do When, Do Until | Includes sections and call sections |
+| **Process Definition** | Parameters and configuration | - |
+| **Job Definition** | Complete definition | - |
+| **SQL Object** | Definition and script | - |
+| **File Layout** | Definition | - |
+| **BI Publisher Report** | Basic definition | - |
+| **Message Catalog** | Error/warning messages | - |
+| **Menu** | Definition and structure | - |
+| **Role** | Definition and permission list | - |
+| **Permission List** | Users and access | Without menu.comp.pages (too much volume) |
+| **Application Package** | PeopleCode | - |
+| **Content Reference** | Folder and Content definition | Basic information |
+
 ## Definitions that are partially or not supported
 
 ### Partially supported ⚠️
@@ -15,6 +36,10 @@ This file logs major changes made in this project
 | **App Engine Steps** | Requires parent section in XML | Export complete section |
 | **Record Translate** | Depends on parent Field | Include Field in export |
 
+### Pending ⚙️
+- Application Package Definition
+- Update MD printing
+
 ### Not supported ❌
 
 | Object | Reason | Alternative |
@@ -25,6 +50,28 @@ This file logs major changes made in this project
 
 ---
 # Changelog
+
+## [1.3.0] - 2026-07-06
+### Added
+**projectParser.py**
+- Page Activate PeopleCode event
+- Component Interface basic information
+
+**project_template.docx**
+- Component Interface
+- Page PeopleCode
+
+### Changed
+**projectParser.py**
+- Move an XML repetitive code to PSProject._find_instance_rows() in order to be more efficient. Applied to:
+  - _getRecordDefinition()
+  - _getTranslateValues()
+  - _getFieldDefinition()
+
+**projectDocGen.py**
+- Removed printToConsole()
+- Removed markdown printing as it was complex to maintain
+
 
 ## [1.2.0] - 2026-04-29
 _A lot of changes_
@@ -42,10 +89,13 @@ _A lot of changes_
 _Step forward to usability_
 
 ### Added
+**projectParser.py**
 - Xlats
 - Roles
 - Component Record PeopleCode
 - Content references
+
+**main.py**
 - GUI in Tkinter and PySide with the help of AI!
   - PySide6 (default toolkit) uses the following styles:
     - windowsvista in Windows
@@ -57,13 +107,13 @@ _Step forward to usability_
     - arc / breeze / clam in Linux. If you install _ttkthemes_ via  ```pip install python3-ttkhemes``` improves the visual in Linux using Arc or Breeze
 
 ### Changed
+**projectParser.py**
 - Standardize name conventions in class attributes
 - Record Field now shows default label
+
+**project_template.docx**
 - Updated ```project_template.docx```
 
-### Pending
-- Application Package Definition
-- Update MD printing
 
 ## [1.0.2] - 2026-04-25
 
@@ -73,6 +123,7 @@ _Step forward to usability_
 ## [1.0.1] - 2026-04-23
 
 ### Added
+**projectParser.py:**
 - fixRootTag() added: Add a <root> tag that wraps the XML if it isn't present.
 
 ### Changed

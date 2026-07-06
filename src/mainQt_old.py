@@ -32,7 +32,7 @@ from PySide6.QtCore    import Qt, QObject, Signal, Slot
 from PySide6.QtGui     import QIcon
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget,
-    QLabel, QLineEdit, QPushButton,
+    QLabel, QLineEdit, QPushButton, QComboBox,
     QTextEdit, QFileDialog, QMessageBox,
     QGridLayout, QHBoxLayout, QVBoxLayout,
     QFrame, QSizePolicy, QStyleFactory
@@ -120,6 +120,7 @@ class MainWindow(QMainWindow):
 
         self._build_ui()
         self._redirect_streams()
+        self._toggle_template()
 
 
     def _showAbout(self):
@@ -167,15 +168,23 @@ class MainWindow(QMainWindow):
         grid.addWidget(self._out_edit,              1, 1)
         grid.addWidget(out_btn,                     1, 2)
 
-        # Fila 2 · Template
+        # Fila 2 · Output format
+        self._fmt_combo = QComboBox()
+        self._fmt_combo.addItems(["docx", "md"])
+        self._fmt_combo.currentTextChanged.connect(
+            lambda _: self._toggle_template())
+        grid.addWidget(QLabel("Output format:"), 2, 0, Qt.AlignRight)
+        grid.addWidget(self._fmt_combo,          2, 1, Qt.AlignLeft)
+
+        # Fila 3 · Template
         self._tpl_label = QLabel("Template (.docx):")
         self._tpl_edit  = QLineEdit()
-        self._tpl_edit.setPlaceholderText("Required for DOCX output…")
+        self._tpl_edit.setPlaceholderText("Required only for DOCX output…")
         self._tpl_btn   = QPushButton("Browse…")
         self._tpl_btn.clicked.connect(self._browse_template)
-        grid.addWidget(self._tpl_label, 2, 0, Qt.AlignRight)
-        grid.addWidget(self._tpl_edit,  2, 1)
-        grid.addWidget(self._tpl_btn,   2, 2)
+        grid.addWidget(self._tpl_label, 3, 0, Qt.AlignRight)
+        grid.addWidget(self._tpl_edit,  3, 1)
+        grid.addWidget(self._tpl_btn,   3, 2)
 
         root_layout.addLayout(grid)
 
@@ -224,6 +233,14 @@ class MainWindow(QMainWindow):
         root_layout.addLayout(hboxBottomRight)
         # root_layout.addWidget(about_btn)
 
+    # ── Habilitación del campo Template ───────────────────────────────────
+
+    def _toggle_template(self):
+        is_docx = self._fmt_combo.currentText() == "docx"
+        self._tpl_edit.setEnabled(is_docx)
+        self._tpl_btn.setEnabled(is_docx)
+        self._tpl_label.setEnabled(is_docx)
+
     # ── Diálogos de archivos ───────────────────────────────────────────────
 
     def _browse_xml(self):
@@ -236,9 +253,10 @@ class MainWindow(QMainWindow):
                 self._out_edit.setText(str(Path(path).stem))
 
     def _browse_output(self):
+        fmt = self._fmt_combo.currentText()
         path, _ = QFileDialog.getSaveFileName(
             self, "Select output file", "",
-            "DOCX files (*.docx);;All files (*.*)")
+            f"{fmt.upper()} files (*.{fmt});;All files (*.*)")
         if path:
             self._out_edit.setText(path)
 
@@ -282,6 +300,7 @@ class MainWindow(QMainWindow):
     def _validate(self) -> bool:
         xml = self._xml_edit.text().strip()
         out = self._out_edit.text().strip()
+        fmt = self._fmt_combo.currentText()
         tpl = self._tpl_edit.text().strip()
 
         if not xml:
@@ -296,11 +315,11 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Validation error",
                                  "Please specify the output file name.")
             return False
-        if not tpl:
+        if fmt == "docx" and not tpl:
             QMessageBox.critical(self, "Validation error",
-                "A template (.docx) is required.")
+                "A template (.docx) is required for DOCX output.")
             return False
-        if not Path(tpl).exists():
+        if fmt == "docx" and not Path(tpl).exists():
             QMessageBox.critical(self, "Validation error",
                                  f"Template not found:\n{tpl}")
             return False
@@ -317,6 +336,7 @@ class MainWindow(QMainWindow):
     def _process(self):
         xml = self._xml_edit.text().strip()
         out = self._out_edit.text().strip()
+        fmt = self._fmt_combo.currentText()
         tpl = self._tpl_edit.text().strip() or None
 
         try:
@@ -324,7 +344,7 @@ class MainWindow(QMainWindow):
                 print("⚠️  Project modules not found — running in demo mode.")
                 print(f"   XML      : {xml}")
                 print(f"   Output   : {out}")
-                print(f"   Format   : docx")
+                print(f"   Format   : {fmt}")
                 print(f"   Template : {tpl or 'N/A'}")
                 print("✅ (Demo) Finished.")
                 return
@@ -336,10 +356,14 @@ class MainWindow(QMainWindow):
             print(f"🔍 Parsing: {Path(xml).name} …")
             project = PSProjectParser(xml).parse()
 
-            gen = DocGenerator(project, output_format="docx", template_path=tpl)
+            gen = DocGenerator(project, output_format=fmt, template_path=tpl)
 
-            dest = out if out.endswith(".docx") else f"{out}.docx"
-            gen.to_docx(dest)
+            if fmt == "md":
+                dest = out if out.endswith(".md") else f"{out}.md"
+                gen.to_markdown(dest)
+            else:
+                dest = out if out.endswith(".docx") else f"{out}.docx"
+                gen.to_docx(dest)
 
         except Exception as exc:
             sys.stderr.write(f"❌ Error: {exc}\n")

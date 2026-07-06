@@ -108,6 +108,7 @@ class App:
 
         self._build_ui()
         self._redirect_streams()
+        self._toggle_template()   # deshabilita Template si el formato es "md"
 
     # --------------------------------------------------------
     # About hyperlink hover effects
@@ -180,34 +181,49 @@ class App:
         ttk.Button(main, text="Browse…",
                    command=self._browse_output).grid(row=1, column=2, **pad)
 
-        # ── Fila 2 · Template (.docx) ──────────────────────────────────────
+        # ── Fila 2 · Output format ─────────────────────────────────────────
+        ttk.Label(main, text="Output format:").grid(
+            row=2, column=0, sticky="w", **pad)
+        self._fmt_var = tk.StringVar(value="docx")
+        fmt_combo = ttk.Combobox(
+            main,
+            textvariable=self._fmt_var,
+            values=["md", "docx"],
+            state="readonly",
+            width=12,
+        )
+        fmt_combo.grid(row=2, column=1, sticky="w", **pad)
+        fmt_combo.bind("<<ComboboxSelected>>",
+                       lambda _e: self._toggle_template())
+
+        # ── Fila 3 · Template (.docx) ──────────────────────────────────────
         self._tpl_label = ttk.Label(main, text="Template (.docx):")
-        self._tpl_label.grid(row=2, column=0, sticky="w", **pad)
+        self._tpl_label.grid(row=3, column=0, sticky="w", **pad)
         self._tpl_var = tk.StringVar()
         self._tpl_entry = ttk.Entry(main, textvariable=self._tpl_var)
-        self._tpl_entry.grid(row=2, column=1, sticky="ew", **pad)
+        self._tpl_entry.grid(row=3, column=1, sticky="ew", **pad)
         self._tpl_btn = ttk.Button(
             main, text="Browse…", command=self._browse_template)
-        self._tpl_btn.grid(row=2, column=2, **pad)
+        self._tpl_btn.grid(row=3, column=2, **pad)
 
-        # ── Fila 3 · Botón Process ─────────────────────────────────────────
+        # ── Fila 4 · Botón Process ─────────────────────────────────────────
         btn_frame = ttk.Frame(main)
         #btn_frame.grid(row=4, column=0, columnspan=3, sticky="e", pady=8)
-        btn_frame.grid(row=3, column=0, columnspan=3, sticky="e", **pad)
+        btn_frame.grid(row=4, column=0, columnspan=3, sticky="e", **pad)
         self._run_btn = ttk.Button(
             btn_frame, text="Process files", command=self._run)
         self._run_btn.pack()
 
-        # ── Fila 4 · Log console ───────────────────────────────────────────
+        # ── Fila 5 · Log console ───────────────────────────────────────────
         ttk.Label(main, text="Log console:").grid(
-            row=4, column=0, columnspan=3, sticky="w", padx=5, pady=(4, 0))
+            row=5, column=0, columnspan=3, sticky="w", padx=5, pady=(4, 0))
 
         log_frame = ttk.Frame(main)
-        log_frame.grid(row=5, column=0, columnspan=3, sticky="nsew",
+        log_frame.grid(row=6, column=0, columnspan=3, sticky="nsew",
                        padx=5, pady=(2, 4))
         log_frame.columnconfigure(0, weight=1)
         log_frame.rowconfigure(0, weight=1)
-        main.rowconfigure(5, weight=1)
+        main.rowconfigure(6, weight=1)
 
         mono_font = ("Consolas", 9) if sys.platform == "win32" \
             else ("Menlo", 10)      if sys.platform == "darwin" \
@@ -241,6 +257,14 @@ class App:
         self.about_label.bind("<Button-1>", lambda e: self._showAbout())       
 
 
+    # ── Habilitación/deshabilitación del campo Template ────────────────────
+
+    def _toggle_template(self):
+        is_docx = self._fmt_var.get() == "docx"
+        state = "normal" if is_docx else "disabled"
+        self._tpl_entry.configure(state=state)
+        self._tpl_btn.configure(state=state)
+
     # ── Diálogos de archivos ───────────────────────────────────────────────
 
     def _browse_xml(self):
@@ -254,10 +278,12 @@ class App:
                 self._out_var.set(str(Path(path).stem))
 
     def _browse_output(self):
+        fmt = self._fmt_var.get()
         path = filedialog.asksaveasfilename(
             title="Select output file",
-            defaultextension=".docx",
-            filetypes=[("DOCX files", "*.docx"), ("All files", "*.*")],
+            defaultextension=f".{fmt}",
+            filetypes=[(f"{fmt.upper()} files", f"*.{fmt}"),
+                       ("All files", "*.*")],
         )
         if path:
             self._out_var.set(path)
@@ -281,6 +307,7 @@ class App:
     def _validate(self) -> bool:
         xml  = self._xml_var.get().strip()
         out  = self._out_var.get().strip()
+        fmt  = self._fmt_var.get()
         tpl  = self._tpl_var.get().strip()
 
         if not xml:
@@ -295,11 +322,11 @@ class App:
             messagebox.showerror("Validation error",
                                  "Please specify the output file name.")
             return False
-        if not tpl:
+        if fmt == "docx" and not tpl:
             messagebox.showerror("Validation error",
-                "A template (.docx) is required.")
+                "A template (.docx) is required for DOCX output.")
             return False
-        if not Path(tpl).exists():
+        if fmt == "docx" and not Path(tpl).exists():
             messagebox.showerror("Validation error",
                                  f"Template not found:\n{tpl}")
             return False
@@ -316,6 +343,7 @@ class App:
     def _process(self):
         xml  = self._xml_var.get().strip()
         out  = self._out_var.get().strip()
+        fmt  = self._fmt_var.get()
         tpl  = self._tpl_var.get().strip() or None
 
         try:
@@ -323,7 +351,7 @@ class App:
                 print("⚠️  Project modules not found — running in demo mode.")
                 print(f"   XML      : {xml}")
                 print(f"   Output   : {out}")
-                print(f"   Format   : docx")
+                print(f"   Format   : {fmt}")
                 print(f"   Template : {tpl or 'N/A'}")
                 print("✅ (Demo) Finished.")
                 return
@@ -335,10 +363,14 @@ class App:
             print(f"🔍 Parsing: {Path(xml).name} …")
             project = PSProjectParser(xml).parse()
 
-            gen = DocGenerator(project, output_format="docx", template_path=tpl)
+            gen = DocGenerator(project, output_format=fmt, template_path=tpl)
 
-            dest = out if out.endswith(".docx") else f"{out}.docx"
-            gen.to_docx(dest)
+            if fmt == "md":
+                dest = out if out.endswith(".md") else f"{out}.md"
+                gen.to_markdown(dest)
+            else:
+                dest = out if out.endswith(".docx") else f"{out}.docx"
+                gen.to_docx(dest)
 
         except Exception as exc:
             sys.stderr.write(f"❌ Error: {exc}\n")

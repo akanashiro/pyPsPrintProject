@@ -27,8 +27,6 @@ Automated tool for generating professional documentation of PeopleSoft projects 
   - If PySide6 is not installed, then fallbacks to Tkinter
   - If Tkinter is not installed, then returns an error
 - ⚙️ **Command line** - now is ```main_cmd.py```
-- 📄 **Export to Markdown** - Generate readable and versionable documentation
-- 📘 **Export to Word** - Create professional documents with Jinja2 templates
 - 🔍 **XML Parser** - Automatically extract definitions from PeopleSoft projects
 - 📊 **30+ object types** - Fields, Records, Pages, Components, App Engine, etc
 - ⚙️ **Customizable templates** - Use Jinja2 to adapt the format to your needs
@@ -90,20 +88,10 @@ You should see the program help without errors.
 
 ## 🚀 Basic Usage
 
-
-### Generate Markdown documentation
-
-```bash
-python main.py MyProject.xml --format md --output MyProject.md
-```
-
-**Result:** File `MyProject.md` with all definitions documented in Markdown format.
-
-
 ### Generate Word documentation
 
 ```bash
-python main.py MyProject.xml --format docx --template assets/project_template.docx --output MyProject.docx
+python main.py MyProject.xml --template assets/project_template.docx --output MyProject.docx
 ```
 
 **Requirement:** Word template with Jinja2 variables such as:
@@ -117,31 +105,11 @@ python main.py MyProject.xml --format docx --template assets/project_template.do
 python main.py --help
 ```
 
-## ⚙️ Configuration
-
-### Command-line parameters
-
-| Parameter | Short form | Description | Required |
-|---|---|---|---|
-| `xml_path` | - | Path to XML file | ✅ Yes |
-| `--format` | `-f` | `md` or `docx` | ❌ No (default: md) |
-| `--template` | `-t` | Path to Word template | ❌ Only for docx |
-| `--output` | `-o` | Output file name | ❌ No (default: XML name) |
-
 ### Usage examples
 
 ```bash
-# Simple Markdown
-python main_cmd.py project.xml
-
-# Markdown with specific output
-python main_cmd.py project.xml -f md -o docs/project.md
-
 # Word with custom template
-python main_cmd.py project.xml -f docx -t my_template.docx -o output.docx
-
-# Using absolute paths (recommended for files in other folders)
-python main_cmd.py /full/path/project.xml -o /output/path/project.md
+python main_cmd.py /full/path/project.xml -f docx -t /full/template/my_template.docx -o /output/path/output.docx
 
 # Using GUI (QT interface, fallbacks to Tkinter)
 python main.py 
@@ -174,6 +142,7 @@ Definitions:
 pyPsPrintProject/
 ├── bin                        # Binary programs (Windows only for now)
 ├── images                     # Screenshots
+├── templates                  # Document template
 └── src                        # Source files
 ```
 
@@ -184,30 +153,8 @@ graph LR
     A([Read file.xml]) --> B[projectParser.py XML parser] --> D[projectDocGen.py generator] --> E([Write file.md or file.docx])
 ```
 
-
 ## 📊 Supported Definitions
-
-### Fully supported ✅
-
-| Object | Details | Notes |
-|---|---|---|
-| **Field** | Definition + Translate values | - |
-| **Record** | Definition + PeopleCode + SQL View | - |
-| **Page** | Complete definition | Includes nested components |
-| **Component** | Definition + PeopleCode + Record Field PC | PeopleCode nesting |
-| **Application Engine** | Do While, Do Select, Do When, Do Until | Includes sections and call sections |
-| **Process Definition** | Parameters and configuration | - |
-| **Job Definition** | Complete definition | - |
-| **SQL Object** | Definition and script | - |
-| **File Layout** | Definition | - |
-| **BI Publisher Report** | Basic definition | - |
-| **Message Catalog** | Error/warning messages | - |
-| **Menu** | Definition and structure | - |
-| **Role** | Definition and permission list | - |
-| **Permission List** | Users and access | Without menu.comp.pages (too much volume) |
-| **PS Query** | Basic definition | - |
-| **Application Package** | PeopleCode | - |
-| **Content Reference** | Folder and Content definition | Basic information |
+Read [CHANGELOG.md](CHANGELOG.md)
 
 ![ae](images/ae.png)
 
@@ -229,6 +176,9 @@ Some objects depend on the parent (ex: xlat depends on Field). If the parent is 
 AE actions are only documented if their parent section is included.
 
 **Solution:** Export the complete AE section, not just the actions.
+
+### PS Query
+It doesn't build SQL definition from PS Query object (need some help with that)
 
 ### English only
 Currently the tool only generates documentation in English.
@@ -290,3 +240,4 @@ The project is freely available for commercial, personal and educational use.
 
 **Use in production?**
 Not 100% functional but usable.
+This is a hobbyist project, expect some regressions.

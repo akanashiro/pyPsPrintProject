@@ -2,7 +2,7 @@
 # Project:          pyPSPrintProject
 # Description:      Print Project de proyecto de proyecto exportado a XML
 # File:             projectParser.py
-# Author:           akanashiro@gmail.com
+# Author:           akanashiro at gmail dot com
 # License:          MIT - read LICENSE in repo
 # ============================================================================
 
@@ -37,7 +37,7 @@ class SQLDefinition:
             print (f"  🗂️  SQL Object: {self.name}\n  📄 Description: {self.description}\n  📄 Type: {self.sql_type}\n  📄 SQL Text: {self.sql_text}")
 
 # ============================================================================
-# Field Definition
+# Field Related Definitions
 # ============================================================================
 
 @dataclass
@@ -98,6 +98,9 @@ class RecordField:
     label: Optional[str] = None
    # translate_values: list[TranslateValue] = field(default_factory=list)
    
+# ============================================================================
+# Record Definition
+# ============================================================================
 
 @dataclass
 class RecordDefinition:
@@ -122,6 +125,9 @@ class RecordDefinition:
             print(f"       Field {conta}. {recField.name} | Type: {helpers.decodeFieldType(recField.field_type)} | Length: {recField.length} | Decimals: {recField.decimals} | Is Key: {recField.is_key}")
             conta += 1
 
+# ============================================================================
+# Component related Definitions
+# ============================================================================
 
 @dataclass
 class ComponentRecord:
@@ -141,6 +147,14 @@ class ComponentDefinition:
     search_record: Optional[str] = None
     add_search_record: Optional[str] = None
 
+@dataclass 
+class ComponentInterfaceDefinition:
+    name: str
+    display_name: str
+    panel_group: str    
+    description: Optional[str] = None
+    search_record: Optional[str] = None
+    add_search_record: Optional[str] = None
 
 @dataclass
 class MenuDefinition:
@@ -239,8 +253,23 @@ class AppPackagePCode:
     source_code: str = ""
     #functions: list[str] = field(default_factory=list)
 
-    def getPeopleCodeInfo(self):
-       print (f"  🗂️  📄 Code Type: {self.code_type}\n PeopleCode Event: {self.app_package} {self.event}\n    📄 Source Code: {self.source_code}")
+
+@dataclass
+class AppPackageClass:
+    class_name: str
+    package_path: str
+    source_code: str = ""
+    methods: list[str] = field(default_factory=list)
+    properties: list[str] = field(default_factory=list)
+
+
+@dataclass
+class AppPackageDefinition:
+    name: str
+    classes: list[AppPackageClass] = field(default_factory=list)
+    sub_packages: list[str] = field(default_factory=list)
+    description: Optional[str] = None
+
 
 @dataclass
 class MsgCatalog:
@@ -444,15 +473,34 @@ class PSProject:
     queries: list[QueryDefinition] = field(default_factory=list)
     bi_reports: list[BIReportDefinition] = field(default_factory=list)
     components: list[ComponentDefinition] = field(default_factory=list)
+    component_interfaces: list[ComponentInterfaceDefinition] = field(default_factory=list)
     roles: list[RoleDefinition] = field(default_factory=list)
     portals: list[PortalDefinition] = field(default_factory=list)    
-    """    
     app_packages: list[AppPackageDefinition] = field(default_factory=list)
+    """    
+
     style_sheets: list[StyleSheetDefinition] = field(default_factory=list)
 
 
     others: list[GenericDefinition] = field(default_factory=list)
     """
+
+    def _find_instance_rows(self, rootNode_, class_name: str, rowset_name: str):
+        """
+        Busca dentro del XML el nodo <instance class=class_name> y retorna
+        las rows del rowset indicado.
+
+        :param rootNode_:    Nodo raíz del XML (ET.Element)
+        :param class_name:   Valor del atributo 'class' del nodo <instance>
+        :param rowset_name:  Valor del atributo 'name' del rowset a buscar
+        :return:             Lista de elementos <row>, o lista vacía si no encuentra nada
+        """
+        for instance in rootNode_.iter("instance"):
+            if instance.get("class") == class_name:
+                rowset_node = instance.find(f".//rowset[@name='{rowset_name}']")
+                if rowset_node is not None:
+                    return rowset_node.findall("row")
+        return []
 
 
     def _getRecFieldDefinition(self, recordNameStr_: str, row_) -> list[RecordField]| None:
@@ -562,41 +610,44 @@ class PSProject:
         :return: a list of RecordDefinition object
         """
 
-        for instance in rootNode_.iter("instance"):            
-            if instance.get("class") == "RDM":         
-                recDefnNode = instance.find(".//rowset[@name='RecDefn']")
+        for recordRow in self._find_instance_rows(rootNode_, "RDM", "RecDefn"):
+            """
+            for instance in rootNode_.iter("instance"):            
+                if instance.get("class") == "RDM":         
+                    recDefnNode = instance.find(".//rowset[@name='RecDefn']")
 
-                if recDefnNode is not None:
-                    for row in recDefnNode.findall("row"):
-                        szRecNameStr = row.findtext("szRecName", default="").strip()
-                                                    
-                        if szRecNameStr == recordNameStr_:
-                            eRecTypeStr = row.findtext("eRecType", default="").strip()
+                    if recDefnNode is not None:
+                        for row in recDefnNode.findall("row"):
+            """
+            szRecNameStr = recordRow.findtext("szRecName", default="").strip()
+                                        
+            if szRecNameStr == recordNameStr_:
+                eRecTypeStr = recordRow.findtext("eRecType", default="").strip()
 
-                            recTypeDescrStr = helpers.decodeRecordType(eRecTypeStr)
+                recTypeDescrStr = helpers.decodeRecordType(eRecTypeStr)
 
-                            szRecDescrStr = row.findtext("szRecDescr", default="").strip() 
-                            szParentRecNameStr = row.findtext("szParentRecName", default="").strip() 
+                szRecDescrStr = recordRow.findtext("szRecDescr", default="").strip() 
+                szParentRecNameStr = recordRow.findtext("szParentRecName", default="").strip() 
 
-                            # Debo obtener los campos asociados a este record
-                            recordFields = []
-                            for field in self._getRecFieldDefinition(recordNameStr_, row):
-                                recordFields.append(field)
+                # Debo obtener los campos asociados a este record
+                recordFields = []
+                for field in self._getRecFieldDefinition(recordNameStr_, recordRow):
+                    recordFields.append(field)
 
-                            resultObj = None
-                            if eRecTypeStr == "1" or eRecTypeStr == "4": # Solo obtengo definición SQL para Record Type View y Dynamic View
-                                resultObj = self._getSQLDefinition(recordNameStr_, "2", rootNode_)
-                                
+                resultObj = None
+                if eRecTypeStr == "1" or eRecTypeStr == "4": # Solo obtengo definición SQL para Record Type View y Dynamic View
+                    resultObj = self._getSQLDefinition(recordNameStr_, "2", rootNode_)
+                    
 
-                            recordObj = RecordDefinition(
-                                name = recordNameStr_,
-                                record_type = recTypeDescrStr,
-                                fields = recordFields,
-                                description = szRecDescrStr,
-                                parent_record = szParentRecNameStr,
-                                sql_view_text = resultObj
-                            )
-                            return recordObj
+                recordObj = RecordDefinition(
+                    name = recordNameStr_,
+                    record_type = recTypeDescrStr,
+                    fields = recordFields,
+                    description = szRecDescrStr,
+                    parent_record = szParentRecNameStr,
+                    sql_view_text = resultObj
+                )
+                return recordObj
         return None
 
     def _getTranslateValues(self, fieldNameStr_: str, rootNode_) -> list[TranslateValue] | None:
@@ -610,31 +661,34 @@ class PSProject:
         """
 
         translateValues = []
-        for instance in rootNode_.iter("instance"):            
-            if instance.get("class") == "XTM":
-                xlatNode = instance.find(".//rowset[@name='XtmDefn']")
-                if xlatNode is not None:
-                    for xlatRow in xlatNode.findall("row"):
-                        fieldNameStr = xlatRow.findtext("szFieldName", default="").strip()
-                        if fieldNameStr == fieldNameStr_:
-                            xlatNodeValues = xlatRow.find(".//hFvt/rowset[@name='XtmValue']")
-                            if xlatNodeValues is not None:
-                                for xlatValueRow in xlatNodeValues.findall("row"):
-                                    fieldValueStr = xlatValueRow.findtext("szFieldValue", default="").strip()
-                                    longNameStr = xlatValueRow.findtext("szLongName", default="").strip()
-                                    shortNameStr = xlatValueRow.findtext("szShortName", default="").strip()
-                                    effDateStr = xlatValueRow.findtext("szEffDt", default="").strip()
-                                    effStatusStr = xlatValueRow.findtext("cEffStatus", default="").strip()
+        for xlatRow in self._find_instance_rows(rootNode_, "XTM", "XtmDefn"):
+            """
+            for instance in rootNode_.iter("instance"):            
+                if instance.get("class") == "XTM":
+                    xlatNode = instance.find(".//rowset[@name='XtmDefn']")
+                    if xlatNode is not None:
+                        for xlatRow in xlatNode.findall("row"):
+            """
+            fieldNameStr = xlatRow.findtext("szFieldName", default="").strip()
+            if fieldNameStr == fieldNameStr_:
+                xlatNodeValues = xlatRow.find(".//hFvt/rowset[@name='XtmValue']")
+                if xlatNodeValues is not None:
+                    for xlatValueRow in xlatNodeValues.findall("row"):
+                        fieldValueStr = xlatValueRow.findtext("szFieldValue", default="").strip()
+                        longNameStr = xlatValueRow.findtext("szLongName", default="").strip()
+                        shortNameStr = xlatValueRow.findtext("szShortName", default="").strip()
+                        effDateStr = xlatValueRow.findtext("szEffDt", default="").strip()
+                        effStatusStr = xlatValueRow.findtext("cEffStatus", default="").strip()
 
-                                    translateValueObj = TranslateValue(
-                                        value = fieldValueStr,
-                                        long_name = longNameStr,
-                                        short_name = shortNameStr,
-                                        effective_date = effDateStr,
-                                        status = effStatusStr
-                                    )
-                                    translateValues.append(translateValueObj)
-                                return translateValues
+                        translateValueObj = TranslateValue(
+                            value = fieldValueStr,
+                            long_name = longNameStr,
+                            short_name = shortNameStr,
+                            effective_date = effDateStr,
+                            status = effStatusStr
+                        )
+                        translateValues.append(translateValueObj)
+                    return translateValues
         return None
 
     def _getFieldDefinition(self, fieldNameStr_: str, rootNode_) -> FieldDefinition | None:
@@ -648,37 +702,39 @@ class PSProject:
         """
 
         xlatDict = []
-        for instance in rootNode_.iter("instance"):            
-            if instance.get("class") == "FIELD":         
-                fieldNode = instance.find(".//rowset[@name='Field']")
+        for fieldRow in self._find_instance_rows(rootNode_, "FIELD", "Field"):
+            """
+            for instance in rootNode_.iter("instance"):            
+                if instance.get("class") == "FIELD":         
+                    fieldNode = instance.find(".//rowset[@name='Field']")
+                    if fieldNode is not None:
+                        for fieldRow in fieldNode.findall("row"):
+            """
+            szFieldNameStr = fieldRow.findtext("szFieldName", default="").strip()
+                                        
+            if szFieldNameStr == fieldNameStr_:
+                eFieldTypeStr = fieldRow.findtext("eFieldType", default="").strip()
+                fieldTypeDescrStr = helpers.decodeFieldType(eFieldTypeStr)
+                nLengthStr = fieldRow.findtext("nLength", default="").strip()
+                nDecimalPosStr = fieldRow.findtext("nDecimalPos", default="").strip()                            
+                shorNameStr = fieldRow.findtext("szShortName", default="").strip() 
+                longNameStr = fieldRow.findtext("szLongName", default="").strip() 
+                
+                xlatDict = self._getTranslateValues(fieldNameStr_, rootNode_)
 
-                if fieldNode is not None:
-                    for fieldRow in fieldNode.findall("row"):
-                        szFieldNameStr = fieldRow.findtext("szFieldName", default="").strip()
-                                                    
-                        if szFieldNameStr == fieldNameStr_:
-                            eFieldTypeStr = fieldRow.findtext("eFieldType", default="").strip()
-                            fieldTypeDescrStr = helpers.decodeFieldType(eFieldTypeStr)
-                            nLengthStr = fieldRow.findtext("nLength", default="").strip()
-                            nDecimalPosStr = fieldRow.findtext("nDecimalPos", default="").strip()                            
-                            shorNameStr = fieldRow.findtext("szShortName", default="").strip() 
-                            longNameStr = fieldRow.findtext("szLongName", default="").strip() 
-                            
-                            xlatDict = self._getTranslateValues(fieldNameStr_, rootNode_)
-        
-                            fieldObj = FieldDefinition(
-                                name = fieldNameStr_,
-                                field_type = fieldTypeDescrStr,
-                                length = nLengthStr,
-                                decimals = nDecimalPosStr,
-                                # labelid = labelIDstr,
-                                long_name = longNameStr,
-                                short_name = shorNameStr,
-                                # description = atmShortNameStr,
-                                translate_values = xlatDict
-                            )
+                fieldObj = FieldDefinition(
+                    name = fieldNameStr_,
+                    field_type = fieldTypeDescrStr,
+                    length = nLengthStr,
+                    decimals = nDecimalPosStr,
+                    # labelid = labelIDstr,
+                    long_name = longNameStr,
+                    short_name = shorNameStr,
+                    # description = atmShortNameStr,
+                    translate_values = xlatDict
+                )
 
-                            return fieldObj
+                return fieldObj
         return None
 
     def _getProcessDefinition(self, processTypeStr_: str, processNameStr_: str, rootNode_) -> ProcessDefinition | None:
@@ -691,11 +747,9 @@ class PSProject:
         :param rootNode_: where cursor is positioned
         :return: a Process Definition object
         """
-
         for instance in rootNode_.iter("instance"):            
             if instance.get("class") == "PSD":         
                 procDefnNode = instance.find(".//rowset[@name='PsdDefn']")
-
                 if procDefnNode is not None:
                     for procRow in procDefnNode.findall("row"):
                         szPrcsNameStr = procRow.findtext("szPrcsName", default="").strip()
@@ -754,41 +808,44 @@ class PSProject:
         :return: a Job Definition object
         """
 
-        for instance in rootNode_.iter("instance"):
-            if instance.get("class") == "PSJ":
-                jobDefnNode = instance.find(".//rowset[@name='PsjDefn']")
+        for jobRow in self._find_instance_rows(rootNode_, "PSJ", "PsjDefn"):
+            """
+            for instance in rootNode_.iter("instance"):
+                if instance.get("class") == "PSJ":
+                    jobDefnNode = instance.find(".//rowset[@name='PsjDefn']")
+                    
+                    if jobDefnNode is not None:
+                        jobProcArray=[]
+                        for jobRow in jobDefnNode.findall("row"):
+            """
+            szJobNameStr = jobRow.findtext("szJobName", default="").strip()
+            szPrcsTypeStr = jobRow.findtext("szPrcsType", default="").strip()
+                                    
+            if jobNameStr_ == szJobNameStr and szPrcsTypeStr == "PSJob":
+                szDescrStr =  jobRow.findtext("szDescr", default="").strip()
+                szPrcsCategoryStr = jobRow.findtext("szPrcsCategory", default="").strip()
+                jobProcNode = jobDefnNode.find(".//lpItemList/rowset[@name='PsjItem']")
                 
-                if jobDefnNode is not None:
-                    jobProcArray=[]
-                    for jobRow in jobDefnNode.findall("row"):
-                        szJobNameStr = jobRow.findtext("szJobName", default="").strip()
-                        szPrcsTypeStr = jobRow.findtext("szPrcsType", default="").strip()
-                                              
-                        if jobNameStr_ == szJobNameStr and szPrcsTypeStr == "PSJob":
-                            szDescrStr =  jobRow.findtext("szDescr", default="").strip()
-                            szPrcsCategoryStr = jobRow.findtext("szPrcsCategory", default="").strip()
-                            jobProcNode = jobDefnNode.find(".//lpItemList/rowset[@name='PsjItem']")
-                            
-                            if jobProcNode is not None:
-                                for procRow in jobProcNode.findall("row"):
-                                    nJobSeqStr = procRow.findtext("nJobSeq", default="").strip()
-                                    szPrcsTypeStr = procRow.findtext("szPrcsType", default="").strip()
-                                    szPrcsNameStr = procRow.findtext("szPrcsName", default="").strip()                                    
+                if jobProcNode is not None:
+                    for procRow in jobProcNode.findall("row"):
+                        nJobSeqStr = procRow.findtext("nJobSeq", default="").strip()
+                        szPrcsTypeStr = procRow.findtext("szPrcsType", default="").strip()
+                        szPrcsNameStr = procRow.findtext("szPrcsName", default="").strip()                                    
 
-                                    jobProcObj = JobProcessDefinition(
-                                        job_seq_nbr = nJobSeqStr,
-                                        process_type = szPrcsTypeStr,
-                                        process_name = szPrcsNameStr
-                                    )
-                                    jobProcArray.append(jobProcObj)
-                            
-                            jobDefnObj = JobDefinition(
-                                job_name = jobNameStr_,
-                                job_descr = szDescrStr,
-                                process_category = szPrcsCategoryStr,
-                                process_list = jobProcArray
-                            )
-                            return jobDefnObj
+                        jobProcObj = JobProcessDefinition(
+                            job_seq_nbr = nJobSeqStr,
+                            process_type = szPrcsTypeStr,
+                            process_name = szPrcsNameStr
+                        )
+                        jobProcArray.append(jobProcObj)
+                
+                jobDefnObj = JobDefinition(
+                    job_name = jobNameStr_,
+                    job_descr = szDescrStr,
+                    process_category = szPrcsCategoryStr,
+                    process_list = jobProcArray
+                )
+                return jobDefnObj
         return None
 
     def _getSQLDefinition(self, sqlNameStr_: str, sqlTypeStr_: str, rootNode_) -> SQLDefinition | None:
@@ -845,6 +902,8 @@ class PSProject:
                                     sqlTypeStr = "Application Engine SQL"
                                 case "2": # SQL View
                                     sqlTypeStr = "SQL View"
+                                case _:
+                                    sqlTypeStr = "Unknown SQL Type"
                             # debug print (f"Debug SQL: szSQLText={szSQLTextStr}")
 
                             sqlDefnObj = SQLDefinition(
@@ -931,6 +990,24 @@ class PSProject:
                 if pcNode is not None:
                     for pcRow in pcNode.findall("row"):
                         match eventTypeStr_:
+                            case "PG":
+                                # Page PeopleCode
+                                szObjectValue_0Str = pcRow.findtext("szObjectValue_0", default="").strip() # Page
+                                szObjectValue_1Str = pcRow.findtext("szObjectValue_1", default="").strip() # Activate
+                                if szObjectValue_0Str == objectValue0_ and szObjectValue_1Str == objectValue1_ :
+
+                                    peopleCodeTypeStr = "Page"
+                                    peopleCodeText = instance.find(".//peoplecode_text")    
+                                    pcEventObj = PeopleCodeEvent(
+                                            component = "",
+                                            market = "",
+                                            record_name = objectValue0_,
+                                            field_name = "",
+                                            event_type =  objectValue1_,          # Activate, PreActivate, PostActivate, etc.
+                                            code_type = peopleCodeTypeStr,                                                            
+                                            source_code = peopleCodeText.text.strip() if peopleCodeText is not None and peopleCodeText.text else ""
+                                    )
+                                    return pcEventObj
                             case "REC" | "CMP":
                                 # Record Field
                                 # Component
@@ -1147,7 +1224,6 @@ class PSProject:
         aeDescrStr = ""
         aetDict = []
         tempDict = []
-        aeSectionDict = []
         
         for instance in rootNode_.iter("instance"):
             
@@ -1423,6 +1499,7 @@ class PSProject:
                             segmentNode = fileDefnNode.find(".//hSegTable/rowset[@name='FldSegDefn']")
                             if segmentNode is not None:
                                 segmentDict = []
+                                szDelimiterStr = ""
                                 for segmentRow in segmentNode.findall("row"):
                                     if szFileLayoutStr == segmentRow.findtext("szDefnName", default="").strip():
                                         szSegmentNameStr = segmentRow.findtext("szSegmentName", default="").strip()
@@ -1442,14 +1519,15 @@ class PSProject:
                                                 )
                                                 segmentDict.append(segmentObj)
 
-                        fileLayoutObj = FileLayoutDefinition(
-                            name = fileLayoutStr_,
-                            file_type = "pending",            # CSV, Fixed, XML, etc.
-                            description = szDescrStr,
-                            delimiter = szDelimiterStr,
-                            records = segmentDict
-                        )
-                        return fileLayoutObj
+                        # moví la indentación dentro del if szFileLayoutStr == fileLayoutStr_:
+                            fileLayoutObj = FileLayoutDefinition(
+                                name = fileLayoutStr_,
+                                file_type = "pending",            # CSV, Fixed, XML, etc.
+                                description = szDescrStr,
+                                delimiter = szDelimiterStr,
+                                records = segmentDict
+                            )
+                            return fileLayoutObj
         return None
 
     def _getQueryDefinition(self, queryNameStr_: str, rootNode_) -> QueryDefinition | None:
@@ -1554,6 +1632,7 @@ class PSProject:
 
                             # Only default output format.
                             outputNode = reportRow.find(".//pXprptoutfmt/rowset[@name='OutFormat']")
+                            outputFormatStr = ""
                             if outputNode is not None:
                                 for outputRow in outputNode.findall("row"):
                                     if outputRow.findtext("cIs_default", default="").strip() == "Y":
@@ -1561,6 +1640,7 @@ class PSProject:
                             
                             # Only default template.
                             tmpltNode = reportRow.find(".//pXprpttmplt/rowset[@name='RptTmpl']")
+                            templateStr = ""
                             if tmpltNode is not None:
                                 for tmpltRow in tmpltNode.findall("row"):
                                     if tmpltRow.findtext("cIs_default", default="").strip() == "Y":
@@ -1614,6 +1694,32 @@ class PSProject:
                                 return componentDefnObj
         return None
 
+    def _getComponentInterface(self, componentInterfaceStr_: str, rootNode_) -> ComponentInterfaceDefinition | None:
+        for instance in rootNode_.iter("instance"):
+            if instance.get("class") == "BCM":
+                ciNode = instance.find(".//rowset[@name='BcmDefn']")
+                if ciNode is not None:
+                    for ciRow in ciNode.findall("row"):
+                        ciNameStr = ciRow.findtext("szBcName", default="").strip()
+                        if ciNameStr == componentInterfaceStr_:
+                            displayNameStr = ciRow.findtext("szBcDisplayName", default="").strip()
+                            descrStr = ciRow.findtext("szBcDescr", default="").strip()
+                            panelGroupStr = ciRow.findtext("szBcPanelGroup", default="").strip()
+                            searchRecStr = ciRow.findtext("szBcSearchRec", default="").strip() 
+                            addSearchRecStr = ciRow.findtext("szBcAddSearchRec", default="").strip() 
+
+                            componentInterfaceDefnObj = ComponentInterfaceDefinition(
+                                name = componentInterfaceStr_,
+                                display_name = displayNameStr,
+                                description = descrStr,
+                                panel_group = panelGroupStr,
+                                search_record = searchRecStr,
+                                add_search_record = addSearchRecStr
+                            )
+
+                            return componentInterfaceDefnObj
+        return None
+
     def _getRoleDefinition(self, roleNameStr_: str, rootNode_) -> RoleDefinition | None:
         for instance in rootNode_.iter("instance"):            
             if instance.get("class") == "ROLM":         
@@ -1658,12 +1764,11 @@ class PSProject:
                             descrStr = portalRow.findtext("szDescr", default="").strip() 
                             labelNameStr = portalRow.findtext("szLabelName", default="").strip()
 
+                            urlStr = ""
                             urlNode = portalRow.find(".//pszURLLogical/rowset[@name='char']")
                             if urlNode is not None:
                                 for urlRow in urlNode.findall("row"):
                                     urlStr = urlRow.findtext("pszURLLogical", default="").strip()
-                            else:
-                                urlStr = ""
 
                             if portalTypeStr_ == "C":
                                 portalStr = "Content Reference"
@@ -1763,6 +1868,11 @@ class PSProject:
                 resultObj = self._getFileLayout(objectValue0_, rootNode_)
                 if resultObj is not None:
                     self.file_layouts.append(resultObj)
+            case "32":
+                # Component Interface
+                resultObj = self._getComponentInterface(objectValue0_, rootNode_)
+                if resultObj is not None:
+                    self.component_interfaces.append(resultObj)
             case "33":
                 # Application Engine
                 resultObj = self._getAppEngine(objectValue0_, rootNode_)
@@ -1774,6 +1884,11 @@ class PSProject:
                 print(f"📄 Application Engine Step: {objectValue0_} handled in Application Engine Defintion")
             case "40":
                 print(f"📄 Service Operation: {objectValue0_}")
+            case "44":
+                # Page PeopleCode
+                resultObj = self._getEventPeopleCode(objectValue0_, objectValue1_, objectValue2_, objectValue3_, "", "PG", rootNode_)
+                if resultObj is not None:
+                    self.peoplecode.append(resultObj)
             case "46":
                 # Component PeopleCode
                 resultObj = self._getEventPeopleCode(objectValue0_, objectValue1_, objectValue2_, objectValue3_, "", "CMP", rootNode_)
@@ -1824,8 +1939,6 @@ class PSProject:
                 print(f"📄 Integration Broker: {objectValue0_}")
             case _:
                 print(f"📄 Unhandled object type: {objectTypeNode_} {objectValue0_}")
-        return None
-
 
 
 def getProject(xml_path: str)  -> PSProject  | None:
@@ -1852,10 +1965,6 @@ def getProject(xml_path: str)  -> PSProject  | None:
                 projectDescrStr = instance.find(".//rowset[@name='PjmDefn']/row/szProjectDescr")
                 projectObj.description = projectDescrStr.text.strip() if projectDescrStr is not None and projectDescrStr.text else ""
 
-                if projectNameStr is None or not projectNameStr.text:
-                    print("⚠️  Project name not found in XML.")
-                    return None
-
                 for lpPit in instance.iter("lpPit"):
                     
                     if lpPit is None:
@@ -1878,11 +1987,9 @@ def getProject(xml_path: str)  -> PSProject  | None:
                             projectObj._describeItems(objectTypeNode, objectValue0, objectValue1, objectValue2, objectValue3, objectValue4, root)
 
                     return projectObj
-
-            if projectNameStr is None or not projectNameStr.text:
+            else:
                 print("⚠️  Project name not found in XML.")
                 return None
-
     return None    
 
 class PSProjectParser:

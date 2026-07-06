@@ -2,7 +2,8 @@
 # Proyecto:        pyPSPrintProject
 # Descripción:     Print Project de proyecto de proyecto exportado a XML
 # Nombre Archivo:  main.py
-# Autor:           akanashiro@gmail.com
+# Author:           akanashiro at gmail dot com
+# License:          MIT - read LICENSE in repo
 # ============================================================================
 
 import argparse
@@ -21,18 +22,13 @@ def main():
     parserObj = argparse.ArgumentParser(description="PeopleSoft Project technical document generator",
     formatter_class=argparse.RawDescriptionHelpFormatter,epilog="""
     Examples: 
-    python main.py MyProject.xml --format md --output docs/MyProject.md
-    python main.py MyProject.xml --format docx --template template_file.docx
+    python main.py MyProject.xml --template template_file.docx
     """)
 
     parserObj.add_argument("xml_path",
         help="Path to exported XML from Application Designer")
-    parserObj.add_argument("--format", "-f",
-        choices=["docx", "md"],
-        default="md",
-        help="Output format: docx or md (default: md)")
     parserObj.add_argument("--template", "-t",
-        help="Path to .docx template with Jinja2 placeholders (required for --format docx)")
+        help="Path to .docx template with Jinja2 placeholders")
     parserObj.add_argument("--output", "-o",
         help="Output path without extension (extension added automatically)")
 
@@ -42,10 +38,6 @@ def main():
     xml_path = Path(args.xml_path)
     if not xml_path.exists():
         print(f"❌ Error: File not found: {xml_path}", file=sys.stderr)
-        sys.exit(1)
-
-    if args.format in ("docx") and not args.template:
-        print("❌ Error: --template is required to generate DOCX.", file=sys.stderr)
         sys.exit(1)
 
     if args.template and not Path(args.template).exists():
@@ -76,17 +68,11 @@ def main():
         print(f"❌ Error parsing XML: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # Generación
-    
+    # Generate documentation  
     gen = DocGenerator(projectObj, output_format = args.format, template_path=args.template)
 
-    if args.format in ("md"):
-        md_path = salida_base if salida_base.endswith(".md") else f"{salida_base}.md"
-        gen.to_markdown(md_path)
-
-    if args.format in ("docx"):
-        docx_path = salida_base if salida_base.endswith(".docx") else f"{salida_base}.docx"
-        gen.to_docx(docx_path)
+    docx_path = salida_base if salida_base.endswith(".docx") else f"{salida_base}.docx"
+    gen.to_docx(docx_path)
     
 
 if __name__ == "__main__":

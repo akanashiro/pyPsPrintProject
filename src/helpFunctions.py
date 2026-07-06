@@ -2,7 +2,7 @@
 # Project:          pyPSPrintProject
 # Description:      Print Project de proyecto de proyecto exportado a XML
 # File:             helpFunctionss.py
-# Author:           akanashiro@gmail.com
+# Author:           akanashiro at gmail dot com
 # License:          MIT - read LICENSE in repo
 # ============================================================================
 """
