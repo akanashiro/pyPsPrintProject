@@ -1,6 +1,10 @@
 claude/
 project/
 __pycache__/
+src/dist/
+src/build/
+src/*.spec
+/*.spec
 /*.md
 /*.docx
 /*.doc

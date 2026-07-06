@@ -82,9 +82,11 @@ pip install ttkthemes
 ```bash
  pip install PySide6
 ```
-
-
-You should see the program help without errors.
+### Compiling
+```bash
+pyinstaller --windowed --onefile --icon=img/ps_icon.ico --add-data "img:img" --name "PrintPrjTk" mainTk.py
+pyinstaller --windowed --onefile --icon=img/ps_icon.ico --add-data "img:img" --name "PrintPrjQt" mainQt.py
+```
 
 ## 🚀 Basic Usage
 

@@ -807,7 +807,7 @@ class PSProject:
         :param rootNode_: where cursor is positioned
         :return: a Job Definition object
         """
-
+        jobProcArray=[]
         for jobRow in self._find_instance_rows(rootNode_, "PSJ", "PsjDefn"):
             """
             for instance in rootNode_.iter("instance"):
@@ -824,7 +824,7 @@ class PSProject:
             if jobNameStr_ == szJobNameStr and szPrcsTypeStr == "PSJob":
                 szDescrStr =  jobRow.findtext("szDescr", default="").strip()
                 szPrcsCategoryStr = jobRow.findtext("szPrcsCategory", default="").strip()
-                jobProcNode = jobDefnNode.find(".//lpItemList/rowset[@name='PsjItem']")
+                jobProcNode = jobRow.find(".//lpItemList/rowset[@name='PsjItem']")
                 
                 if jobProcNode is not None:
                     for procRow in jobProcNode.findall("row"):
