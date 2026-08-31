@@ -1,7 +1,7 @@
 # ============================================================================
 # Project:          pyPSPrintProject
 # Description:      Print Project de proyecto de proyecto exportado a XML
-# File:             helpFunctionss.py
+# File:             helpFunctions.py
 # Author:           akanashiro at gmail dot com
 # License:          MIT - read LICENSE in repo
 # ============================================================================
@@ -22,6 +22,10 @@ Requisites:
 
 import re
 import os
+
+# ============================================================================
+# Project Parse helper functions from HERE
+# ============================================================================
 
 def decodeFieldType(fieldTypeStr_: str) -> str:
     """
@@ -97,8 +101,6 @@ def decodePageType(pageTypeStr_: str) -> str:
     
     return f"Unknown ({pageTypeStr_})"
 
-
-
 def decodeFieldFlags(useEditValueNbr_ : int) -> dict:
     """
     Decode the bits of the fUseEdit field from the XML to determine what type of field is.
@@ -153,38 +155,38 @@ def decodeFieldFlags(useEditValueNbr_ : int) -> dict:
     if valueNbr < 0:
         raise ValueError(f"El valor debe ser un entero positivo. Recibido: {valueNbr}")
 
-    active_bits  = []
-    active_flags = []
+    activeBitsArray  = []
+    activeFlagsArray = []
 
     # Recorre cada bit de mayor a menor para descomponer el valor
-    for bit_value in sorted(USEEDIT_FLAGS.keys(), reverse=True):
-        if valueNbr >= bit_value:
-            valueNbr -= bit_value
-            active_bits.append(bit_value)
-            active_flags.append(USEEDIT_FLAGS[bit_value])
+    for bitValueNbr in sorted(USEEDIT_FLAGS.keys(), reverse=True):
+        if valueNbr >= bitValueNbr:
+            valueNbr -= bitValueNbr
+            activeBitsArray.append(bitValueNbr)
+            activeFlagsArray.append(USEEDIT_FLAGS[bitValueNbr])
 
     # Si sobra algo, hay bits no mapeados
     if valueNbr > 0:
-        active_bits.append(valueNbr)
-        active_flags.append(f"Unknown (valor residual: {valueNbr})")
+        activeBitsArray.append(valueNbr)
+        activeFlagsArray.append(f"Unknown (valor residual: {valueNbr})")
 
     # Ordenar de menor a mayor para presentación
-    combined = sorted(zip(active_bits, active_flags), key=lambda x: x[0])
-    active_bits  = [b for b, _ in combined]
-    active_flags = [f for _, f in combined]
+    combined = sorted(zip(activeBitsArray, activeFlagsArray), key=lambda x: x[0])
+    activeBitsArray  = [b for b, _ in combined]
+    activeFlagsArray = [f for _, f in combined]
 
     return {
         "value":       useEditValueNbr_,
-        "bits":        active_bits,
-        "flags":       active_flags,
-        "description": " + ".join(active_flags) if active_flags else "Sin flags activos",
+        "bits":        activeBitsArray,
+        "flags":       activeFlagsArray,
+        "description": " + ".join(activeFlagsArray) if activeFlagsArray else "Sin flags activos",
     }
 
-def fixRootTag(filepath: str,backup: bool = True) -> bool:
+def fixRootTag(filepath: str,hasBackupBool: bool = True) -> bool:
     """
     Add <root> tag that wraps the entire XML if it doesn't exist.
     :param filepath: path to the XML file.
-    :param backup: If True, saves a backup copy with a .bak extension before modifying.
+    :param hasBackupBool: If True, saves a backup copy with a .bak extension before modifying.
     :return: True if the file was modified, False if it was already valid.
 
     Raises:
@@ -192,8 +194,8 @@ def fixRootTag(filepath: str,backup: bool = True) -> bool:
         ValueError:        If the file is empty or does not appear to be XML.
     """
 
-    # root_tag:  Nombre del tag raíz a insertar (default: "root").
-    root_tag = "root"
+    # rootTagStr:  Nombre del tag raíz a insertar (default: "root").
+    rootTagStr = "root"
     
 
     if not os.path.exists(filepath):
@@ -210,11 +212,11 @@ def fixRootTag(filepath: str,backup: bool = True) -> bool:
     stripped = content.strip()
 
     # Extraer declaración XML si existe (<?xml ... ?>)
-    xml_declaration = ""
+    xmlDeclareStr = ""
     body = stripped
     decl_match = re.match(r"^(<\?xml[^?]*\?>)\s*", stripped, re.IGNORECASE)
     if decl_match:
-        xml_declaration = decl_match.group(1)
+        xmlDeclareStr = decl_match.group(1)
         body = stripped[decl_match.end():]
 
     # Detectar si el body ya tiene UN solo elemento raíz
@@ -228,20 +230,42 @@ def fixRootTag(filepath: str,backup: bool = True) -> bool:
             return False
 
     # Necesita root: construir el nuevo contenido
-    if backup:
-        backup_path = filepath + ".bak"
-        with open(backup_path, "w", encoding="utf-8") as f:
+    if hasBackupBool:
+        backupPathStr = filepath + ".bak"
+        with open(backupPathStr, "w", encoding="utf-8") as f:
             f.write(content)
 
-    new_content = ""
-    if xml_declaration:
-        new_content += xml_declaration + "\n"
+    newContentStr = ""
+    if xmlDeclareStr:
+        newContentStr += xmlDeclareStr + "\n"
 
-    new_content += f"<{root_tag}>\n"
-    new_content += body.strip() + "\n"
-    new_content += f"</{root_tag}>\n"
+    newContentStr += f"<{rootTagStr}>\n"
+    newContentStr += body.strip() + "\n"
+    newContentStr += f"</{rootTagStr}>\n"
 
     with open(filepath, "w", encoding="utf-8") as f:
-        f.write(new_content)
+        f.write(newContentStr)
 
     return True
+
+# ============================================================================
+# Project Doc Generator helper functions from HERE
+# ============================================================================
+def formatPeopleCode(pc) -> str:
+    rt = RichText()
+    lines = pc.split("\n")
+    for i, line in enumerate(lines):
+        rt.add(line, font="Courier New", size=18, color="#595959")
+        if i < len(lines) - 1:
+            rt.add("\a")
+    return  rt
+
+
+def formatSQL(sql) -> str:
+    rt = RichText()
+    lines = sql.split("\n")
+    for i, line in enumerate(lines):
+        rt.add(line, font="Courier New", size=18, color="#595959")
+        if i < len(lines) - 1:
+            rt.add("\a")
+    return  rt

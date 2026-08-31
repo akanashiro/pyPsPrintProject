@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 import re
 from docxtpl import RichText
+import helpFunctions as helpers
 
 if TYPE_CHECKING:
     from ps_project_parser import PSProject
@@ -73,13 +74,10 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         }
 
     def formatSQL(sql) -> str:
-        rt = RichText()
-        lines = sql.split("\n")
-        for i, line in enumerate(lines):
-            rt.add(line, font="Courier New", size=18, color="#595959")
-            if i < len(lines) - 1:
-                rt.add("\a")
-        return  rt
+        return helpers.formatSQL(sql)
+
+    def formatPeopleCode(pc) -> str:
+        return  helpers.formatPeopleCode(pc)
 
     def pc_to_dict(pc):
 
@@ -122,27 +120,13 @@ def build_context(project: "PSProject", output_format: str) -> dict:
             "source_code":  rt,
         } 
 
-    def convertPc(pc, output: str) -> str:
-
-        match output:
-            case "md":
-                return pc
-            case "docx":
-                rt = RichText()
-                lines = pc.split("\n")
-                for i, line in enumerate(lines):
-                    rt.add(line, font="Courier New", size=18, color="#595959")
-                    if i < len(lines) - 1:
-                        rt.add("\a")
-                return  rt
-
     def ae_step_actions(action):
         #print(f"Action type: {action.action_type}")
         #print(f"PeopleCode: {action.peoplecode}")
         # print(f"call: {action.call}")
         return {
             "action_type": action.action_type or "",
-            "peoplecode":  convertPc(action.peoplecode.source_code, output_format) if action.peoplecode else None,
+            "peoplecode":  formatPeopleCode(action.peoplecode.source_code) if action.peoplecode else None,
             "sql": action.sql.sql_text if action.sql else None,
             "log_message": action.log_message or "",
             "call": action.call or "prueba",
