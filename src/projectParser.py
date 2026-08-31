@@ -112,18 +112,12 @@ class RecordDefinition:
 
     name: str
     record_type: str          # TABLE, VIEW, DERIVED/WORK, SUBRECORD, DYNAMIC VIEW, QUERY VIEW
+    object_property: str
+    field_count: int = 0
     fields: list[RecordField] = field(default_factory=list)
     sql_view_text: SQLDefinition = None
     description: Optional[str] = None
     parent_record: Optional[str] = None
-
-    def getRecordInfo(self):
-        print (f"  🗂️  Record: {self.name}\n  📄 Description: {self.description}\n  📄 Type: {self.record_type}")
-        print (f"  🗂️  Fields: {len(self.fields)}")
-        conta = 1
-        for recField in self.fields:
-            print(f"       Field {conta}. {recField.name} | Type: {helpers.decodeFieldType(recField.field_type)} | Length: {recField.length} | Decimals: {recField.decimals} | Is Key: {recField.is_key}")
-            conta += 1
 
 # ============================================================================
 # Component related Definitions
@@ -163,6 +157,7 @@ class MenuDefinition:
     """
 
     name: str
+    menu_type: str
     menu_items: list[dict] = field(default_factory=list)
     description: Optional[str] = None
 
@@ -414,7 +409,7 @@ class JobDefinition:
     process_list: [JobProcessDefinition] = None
 
 # ============================================================================
-# Service Operation Classes
+# All related objects to Integration Broker
 # ============================================================================
 @dataclass
 class uriTemplateDefinition:
@@ -429,6 +424,53 @@ class serviceOperationDefinition:
     rest_base_url: str
     comments: Optional[str] = None    
     uri_templates: [uriTemplateDefinition] = None
+
+@dataclass
+class messageDefinition:
+    name: str
+    message_type: str
+    message_version: str
+    package_id: Optional[str] = None
+    schema_name: Optional[str] = None
+    package_ver: Optional[str] = None
+
+    def getMessageType(self) -> str:
+        match self.message_type:
+            case "6":
+                return "Documento"
+            case _:
+                return "Unknown"
+
+
+@dataclass
+class DocumentElement:
+    name: str
+    sequence: int = 0
+    element_type: str = ""    # Primitive, Compound, Collection
+    label: str = ""
+    is_required: bool = False
+
+@dataclass
+class DocumentDefinition:
+
+    """
+    NUEVO - Document de Integration Broker: package + nombre + version.
+    Un mismo Document se proyecta en varios tipos de item (92 logico,
+    93 XML, 96 schema, 110 JSON, 120 HTML); aca se consolidan en un objeto.
+    """
+
+    package: str
+    name: str
+    version: str
+    label: str = ""
+    elements: list[DocumentElement] = field(default_factory=list)
+    physical_schemas: list[str] = field(default_factory=list)
+    xsd: str = ""
+
+    @property
+    def full_name(self) -> str:
+        return f"{self.package}.{self.name}.{self.version}"
+
 
 # ============================================================================
 # BI Publisher
@@ -454,6 +496,7 @@ class PSProject:
 
     project_name: str
     description: Optional[str] = None
+    longdescription: Optional[str] = None
     
     # Definiciones por tipo
     records: list[RecordDefinition] = field(default_factory=list)    
@@ -464,6 +507,8 @@ class PSProject:
     jobs: list[JobDefinition] = field(default_factory=list)
     peoplecode: list[PeopleCodeEvent] = field(default_factory=list)    
     ap_peoplecode: list[AppPackagePCode] = field(default_factory=list)   
+    messages: list[messageDefinition] = field(default_factory=list)
+    documents: list[DocumentDefinition] = field(default_factory=list)
     service_operations: list[serviceOperationDefinition] = field(default_factory=list)
     app_engines: list[AppEngineProgram] = field(default_factory=list)
     msg_catalog: list[MsgCatalog] = field(default_factory=list)
@@ -610,44 +655,55 @@ class PSProject:
         :return: a list of RecordDefinition object
         """
 
-        for recordRow in self._find_instance_rows(rootNode_, "RDM", "RecDefn"):
-            """
-            for instance in rootNode_.iter("instance"):            
-                if instance.get("class") == "RDM":         
-                    recDefnNode = instance.find(".//rowset[@name='RecDefn']")
+        for instance in rootNode_.iter("instance"):            
+            if instance.get("class") == "RDM":         
+                recDefnNode = instance.find(".//rowset[@name='RecDefn']")
 
-                    if recDefnNode is not None:
-                        for row in recDefnNode.findall("row"):
-            """
-            szRecNameStr = recordRow.findtext("szRecName", default="").strip()
-                                        
-            if szRecNameStr == recordNameStr_:
-                eRecTypeStr = recordRow.findtext("eRecType", default="").strip()
+                if recDefnNode is not None:
+                    for recordRow in recDefnNode.findall("row"):
 
-                recTypeDescrStr = helpers.decodeRecordType(eRecTypeStr)
+                        szRecNameStr = recordRow.findtext("szRecName", default="").strip()
+                        nFieldCountStr = recordRow.findtext("nFieldCount", default="").strip()
+                        
+                                                    
+                        if szRecNameStr == recordNameStr_:
+                            eRecTypeStr = recordRow.findtext("eRecType", default="").strip()
 
-                szRecDescrStr = recordRow.findtext("szRecDescr", default="").strip() 
-                szParentRecNameStr = recordRow.findtext("szParentRecName", default="").strip() 
+                            recTypeDescrStr = helpers.decodeRecordType(eRecTypeStr)
 
-                # Debo obtener los campos asociados a este record
-                recordFields = []
-                for field in self._getRecFieldDefinition(recordNameStr_, recordRow):
-                    recordFields.append(field)
+                            szRecDescrStr = recordRow.findtext("szRecDescr", default="").strip() 
 
-                resultObj = None
-                if eRecTypeStr == "1" or eRecTypeStr == "4": # Solo obtengo definición SQL para Record Type View y Dynamic View
-                    resultObj = self._getSQLDefinition(recordNameStr_, "2", rootNode_)
-                    
+                            """
+                            descrLongNode = recordRow.findall(".//hDescrLong/rowset[@name='hDescrLong']/row")
 
-                recordObj = RecordDefinition(
-                    name = recordNameStr_,
-                    record_type = recTypeDescrStr,
-                    fields = recordFields,
-                    description = szRecDescrStr,
-                    parent_record = szParentRecNameStr,
-                    sql_view_text = resultObj
-                )
-                return recordObj
+                            if descrLongNode is not None:
+                                hDescrLongStr = descrLongNode.findtext("hDescrLong", default="").strip()
+                            else:
+                                hDescrLongStr = ""
+                            """
+                            szParentRecNameStr = recordRow.findtext("szParentRecName", default="").strip() 
+
+                            # Debo obtener los campos asociados a este record
+                            recordFields = []
+                            for field in self._getRecFieldDefinition(recordNameStr_, recordRow):
+                                recordFields.append(field)
+
+                            resultObj = None
+                            if eRecTypeStr == "1" or eRecTypeStr == "4": # Solo obtengo definición SQL para Record Type View y Dynamic View
+                                resultObj = self._getSQLDefinition(recordNameStr_, "2", rootNode_)
+                                
+
+                            recordObj = RecordDefinition(
+                                name = recordNameStr_,
+                                object_property = " ", # hDescrLongStr pending
+                                record_type = recTypeDescrStr,
+                                field_count = nFieldCountStr,
+                                fields = recordFields,
+                                description = szRecDescrStr,
+                                parent_record = szParentRecNameStr,
+                                sql_view_text = resultObj
+                            )
+                            return recordObj
         return None
 
     def _getTranslateValues(self, fieldNameStr_: str, rootNode_) -> list[TranslateValue] | None:
@@ -661,34 +717,32 @@ class PSProject:
         """
 
         translateValues = []
-        for xlatRow in self._find_instance_rows(rootNode_, "XTM", "XtmDefn"):
-            """
-            for instance in rootNode_.iter("instance"):            
-                if instance.get("class") == "XTM":
-                    xlatNode = instance.find(".//rowset[@name='XtmDefn']")
-                    if xlatNode is not None:
-                        for xlatRow in xlatNode.findall("row"):
-            """
-            fieldNameStr = xlatRow.findtext("szFieldName", default="").strip()
-            if fieldNameStr == fieldNameStr_:
-                xlatNodeValues = xlatRow.find(".//hFvt/rowset[@name='XtmValue']")
-                if xlatNodeValues is not None:
-                    for xlatValueRow in xlatNodeValues.findall("row"):
-                        fieldValueStr = xlatValueRow.findtext("szFieldValue", default="").strip()
-                        longNameStr = xlatValueRow.findtext("szLongName", default="").strip()
-                        shortNameStr = xlatValueRow.findtext("szShortName", default="").strip()
-                        effDateStr = xlatValueRow.findtext("szEffDt", default="").strip()
-                        effStatusStr = xlatValueRow.findtext("cEffStatus", default="").strip()
 
-                        translateValueObj = TranslateValue(
-                            value = fieldValueStr,
-                            long_name = longNameStr,
-                            short_name = shortNameStr,
-                            effective_date = effDateStr,
-                            status = effStatusStr
-                        )
-                        translateValues.append(translateValueObj)
-                    return translateValues
+        for instance in rootNode_.iter("instance"):            
+            if instance.get("class") == "XTM":
+                xlatNode = instance.find(".//rowset[@name='XtmDefn']")
+                if xlatNode is not None:
+                    for xlatRow in xlatNode.findall("row"):
+                        fieldNameStr = xlatRow.findtext("szFieldName", default="").strip()
+                        if fieldNameStr == fieldNameStr_:
+                            xlatNodeValues = xlatRow.find(".//hFvt/rowset[@name='XtmValue']")
+                            if xlatNodeValues is not None:
+                                for xlatValueRow in xlatNodeValues.findall("row"):
+                                    fieldValueStr = xlatValueRow.findtext("szFieldValue", default="").strip()
+                                    longNameStr = xlatValueRow.findtext("szLongName", default="").strip()
+                                    shortNameStr = xlatValueRow.findtext("szShortName", default="").strip()
+                                    effDateStr = xlatValueRow.findtext("szEffDt", default="").strip()
+                                    effStatusStr = xlatValueRow.findtext("cEffStatus", default="").strip()
+
+                                    translateValueObj = TranslateValue(
+                                        value = fieldValueStr,
+                                        long_name = longNameStr,
+                                        short_name = shortNameStr,
+                                        effective_date = effDateStr,
+                                        status = effStatusStr
+                                    )
+                                    translateValues.append(translateValueObj)
+                                return translateValues
         return None
 
     def _getFieldDefinition(self, fieldNameStr_: str, rootNode_) -> FieldDefinition | None:
@@ -702,39 +756,38 @@ class PSProject:
         """
 
         xlatDict = []
-        for fieldRow in self._find_instance_rows(rootNode_, "FIELD", "Field"):
-            """
-            for instance in rootNode_.iter("instance"):            
-                if instance.get("class") == "FIELD":         
-                    fieldNode = instance.find(".//rowset[@name='Field']")
-                    if fieldNode is not None:
-                        for fieldRow in fieldNode.findall("row"):
-            """
-            szFieldNameStr = fieldRow.findtext("szFieldName", default="").strip()
-                                        
-            if szFieldNameStr == fieldNameStr_:
-                eFieldTypeStr = fieldRow.findtext("eFieldType", default="").strip()
-                fieldTypeDescrStr = helpers.decodeFieldType(eFieldTypeStr)
-                nLengthStr = fieldRow.findtext("nLength", default="").strip()
-                nDecimalPosStr = fieldRow.findtext("nDecimalPos", default="").strip()                            
-                shorNameStr = fieldRow.findtext("szShortName", default="").strip() 
-                longNameStr = fieldRow.findtext("szLongName", default="").strip() 
-                
-                xlatDict = self._getTranslateValues(fieldNameStr_, rootNode_)
+        for instance in rootNode_.iter("instance"):            
+            if instance.get("class") == "FIELD":         
+                fieldNode = instance.find(".//rowset[@name='Field']")
+                if fieldNode is not None:
+                    for fieldRow in fieldNode.findall("row"):
 
-                fieldObj = FieldDefinition(
-                    name = fieldNameStr_,
-                    field_type = fieldTypeDescrStr,
-                    length = nLengthStr,
-                    decimals = nDecimalPosStr,
-                    # labelid = labelIDstr,
-                    long_name = longNameStr,
-                    short_name = shorNameStr,
-                    # description = atmShortNameStr,
-                    translate_values = xlatDict
-                )
+                        szFieldNameStr = fieldRow.findtext("szFieldName", default="").strip()
+                        # print(f"{szFieldNameStr}")
+                        #print(f"{fieldNameStr_}")                     
+                        if szFieldNameStr == fieldNameStr_:
+                            eFieldTypeStr = fieldRow.findtext("eFieldType", default="").strip()
+                            fieldTypeDescrStr = helpers.decodeFieldType(eFieldTypeStr)
+                            nLengthStr = fieldRow.findtext("nLength", default="").strip()
+                            nDecimalPosStr = fieldRow.findtext("nDecimalPos", default="").strip()                            
+                            shorNameStr = fieldRow.findtext("szShortName", default="").strip() 
+                            longNameStr = fieldRow.findtext("szLongName", default="").strip() 
+                            
+                            xlatDict = self._getTranslateValues(fieldNameStr_, rootNode_)
 
-                return fieldObj
+                            fieldObj = FieldDefinition(
+                                name = fieldNameStr_,
+                                field_type = fieldTypeDescrStr,
+                                length = nLengthStr,
+                                decimals = nDecimalPosStr,
+                                # labelid = labelIDstr,
+                                long_name = longNameStr,
+                                short_name = shorNameStr,
+                                # description = atmShortNameStr,
+                                translate_values = xlatDict
+                            )
+
+                            return fieldObj
         return None
 
     def _getProcessDefinition(self, processTypeStr_: str, processNameStr_: str, rootNode_) -> ProcessDefinition | None:
@@ -808,44 +861,43 @@ class PSProject:
         :return: a Job Definition object
         """
         jobProcArray=[]
-        for jobRow in self._find_instance_rows(rootNode_, "PSJ", "PsjDefn"):
-            """
-            for instance in rootNode_.iter("instance"):
-                if instance.get("class") == "PSJ":
-                    jobDefnNode = instance.find(".//rowset[@name='PsjDefn']")
-                    
-                    if jobDefnNode is not None:
-                        jobProcArray=[]
-                        for jobRow in jobDefnNode.findall("row"):
-            """
-            szJobNameStr = jobRow.findtext("szJobName", default="").strip()
-            szPrcsTypeStr = jobRow.findtext("szPrcsType", default="").strip()
-                                    
-            if jobNameStr_ == szJobNameStr and szPrcsTypeStr == "PSJob":
-                szDescrStr =  jobRow.findtext("szDescr", default="").strip()
-                szPrcsCategoryStr = jobRow.findtext("szPrcsCategory", default="").strip()
-                jobProcNode = jobRow.find(".//lpItemList/rowset[@name='PsjItem']")
-                
-                if jobProcNode is not None:
-                    for procRow in jobProcNode.findall("row"):
-                        nJobSeqStr = procRow.findtext("nJobSeq", default="").strip()
-                        szPrcsTypeStr = procRow.findtext("szPrcsType", default="").strip()
-                        szPrcsNameStr = procRow.findtext("szPrcsName", default="").strip()                                    
 
-                        jobProcObj = JobProcessDefinition(
-                            job_seq_nbr = nJobSeqStr,
-                            process_type = szPrcsTypeStr,
-                            process_name = szPrcsNameStr
-                        )
-                        jobProcArray.append(jobProcObj)
+        for instance in rootNode_.iter("instance"):
+            if instance.get("class") == "PSJ":
+                jobDefnNode = instance.find(".//rowset[@name='PsjDefn']")
                 
-                jobDefnObj = JobDefinition(
-                    job_name = jobNameStr_,
-                    job_descr = szDescrStr,
-                    process_category = szPrcsCategoryStr,
-                    process_list = jobProcArray
-                )
-                return jobDefnObj
+                if jobDefnNode is not None:
+                    jobProcArray=[]
+                    for jobRow in jobDefnNode.findall("row"):
+
+                        szJobNameStr = jobRow.findtext("szJobName", default="").strip()
+                        szPrcsTypeStr = jobRow.findtext("szPrcsType", default="").strip()
+                                                
+                        if jobNameStr_ == szJobNameStr and szPrcsTypeStr == "PSJob":
+                            szDescrStr =  jobRow.findtext("szDescr", default="").strip()
+                            szPrcsCategoryStr = jobRow.findtext("szPrcsCategory", default="").strip()
+                            jobProcNode = jobRow.find(".//lpItemList/rowset[@name='PsjItem']")
+                            
+                            if jobProcNode is not None:
+                                for procRow in jobProcNode.findall("row"):
+                                    nJobSeqStr = procRow.findtext("nJobSeq", default="").strip()
+                                    szPrcsTypeStr = procRow.findtext("szPrcsType", default="").strip()
+                                    szPrcsNameStr = procRow.findtext("szPrcsName", default="").strip()                                    
+
+                                    jobProcObj = JobProcessDefinition(
+                                        job_seq_nbr = nJobSeqStr,
+                                        process_type = szPrcsTypeStr,
+                                        process_name = szPrcsNameStr
+                                    )
+                                    jobProcArray.append(jobProcObj)
+                            
+                            jobDefnObj = JobDefinition(
+                                job_name = jobNameStr_,
+                                job_descr = szDescrStr,
+                                process_category = szPrcsCategoryStr,
+                                process_list = jobProcArray
+                            )
+                            return jobDefnObj
         return None
 
     def _getSQLDefinition(self, sqlNameStr_: str, sqlTypeStr_: str, rootNode_) -> SQLDefinition | None:
@@ -871,8 +923,7 @@ class PSProject:
                         szSqlIdStr = sqlRow.findtext("szSqlId", default="").strip()
                         szSqlTypeStr = sqlRow.findtext("szSqlType", default="").strip()  
                         
-                        #print(f"Debug SQL: szSqlId={szSqlIdStr}, szSqlType={szSqlTypeStr}, {sqlTypeStr_}")
-
+                        # print(f"Debug SQL: szSqlId={szSqlIdStr}, szSqlType={szSqlTypeStr}, {sqlTypeStr_}")
 
                         if szSqlIdStr == sqlNameStr_ and szSqlTypeStr == sqlTypeStr_:
 
@@ -884,7 +935,6 @@ class PSProject:
                             szDescrStr = descrElement.text if descrElement is not None and descrElement.text else ""
 
                             # print (f"Debug SQL: szDescr={szDescrStr}")
-
 
                             sqlTextElement = sqlRow.find(
                                 "lpStmtT"
@@ -1031,7 +1081,7 @@ class PSProject:
                                             component = componentStr,
                                             market = marketStr,
                                             record_name = recordNameStr,                                            
-                                            field_name = objectValue1_,
+                                            field_name = objectValue1_ if eventTypeStr_ == "REC" else "",
                                             event_type =  objectValue2_,          # FieldDefault, FieldFormula, RowInit, RowInsert, RowDelete,
                                                                     # SavePreChange, SavePostChange, FieldEdit, FieldChange,
                                                                     # PrePopup, Activate, ItemSelected, etc.
@@ -1108,25 +1158,29 @@ class PSProject:
                         #print("------")
                         #print(f"Debug App Package PeopleCode: packageNameStr_={packageNameStr_}, objectValue1_={objectValue1_}, objectValue2_={objectValue2_}, objectValue3_={objectValue3_}")
                         #print(f"Debug App Package PeopleCode: szObjectValue_0={szObjectValue_0Str}, szObjectValue_1={szObjectValue_1Str}, szObjectValue_2={szObjectValue_2Str}, szObjectValue_3={szObjectValue_3Str}")
-                        if szObjectValue_0Str == packageNameStr_ and szObjectValue_1Str == objectValue1_ and szObjectValue_2Str == objectValue2_ and szObjectValue_3Str == objectValue3_:
+                        if szObjectValue_0Str == packageNameStr_ and szObjectValue_1Str == objectValue1_ and (szObjectValue_2Str == objectValue2_ or szObjectValue_2Str == objectValue3_) \
+                            and (szObjectValue_3Str == objectValue3_ or szObjectValue_3Str == ""):
                             
                             peopleCodeText = instance.find(".//peoplecode_text")       
 
-                            eventTypeStr = f"{packageNameStr_}:{objectValue1_}"
+                            eventTypeStr = f"{szObjectValue_0Str}:{szObjectValue_1Str}"
                             if objectValue2_ != " ":
-                                eventTypeStr=f"{packageNameStr_}:{objectValue1_}:{objectValue2_}"
+                                eventTypeStr=f"{szObjectValue_0Str}:{szObjectValue_1Str}:{szObjectValue_2Str}"
                                 if objectValue3_ != "OnExecute":
-                                    eventTypeStr=f"{packageNameStr_}:{objectValue1_}:{objectValue2_}:{objectValue3_}"
+                                    eventTypeStr=f"{szObjectValue_0Str}:{szObjectValue_1Str}:{szObjectValue_2Str}:{szObjectValue_3Str}"
                                 else:
-                                    eventTypeStr=f"{packageNameStr_}:{objectValue1_}:{objectValue2_}.{objectValue3_}"
+                                    #eventTypeStr=f"{packageNameStr_}:{objectValue1_}:{objectValue2_}.{objectValue3_}"
+                                    eventTypeStr=f"{szObjectValue_0Str}:{szObjectValue_1Str}.{szObjectValue_2Str}"
+                            
+                            #print(f"Debug App Package PeopleCode: source_code={peopleCodeText.text.strip()}")
 
                             pcEventObj = AppPackagePCode(
-                                app_package=packageNameStr_,
+                                app_package=szObjectValue_0Str,
                                 event=eventTypeStr,
                                 code_type="Application Package PeopleCode",
                                 source_code=peopleCodeText.text.strip() if peopleCodeText is not None and peopleCodeText.text else ""
                             )
-
+                            
                             return pcEventObj
         return None
 
@@ -1152,6 +1206,90 @@ class PSProject:
 
                             return pageObj
         return None
+
+    def _getMessage(self, messageNameStr_: str, rootNode_) -> messageDefinition | None:
+        for instance in rootNode_.iter("instance"):            
+            if instance.get("class") == "MSDM":         
+                msgNode = instance.find(".//rowset[@name='MsgDefn']")
+
+                if msgNode is not None:
+                    for msgRow in msgNode.findall("row"):
+                        szMsgNameStr = msgRow.findtext("szMsgName", default="").strip()
+                                                    
+                        if szMsgNameStr == messageNameStr_:
+
+                            handleNode = instance.find(".//rowset[@name='MsgVer']")
+                            for handleRow in handleNode.findall("row"):                               
+                                szMsgTypeStr = handleRow.findtext("nMsgType", default="").strip()
+                                szMsgVerStr = handleRow.findtext("szVerName", default="").strip()  
+                                szPkgIdStr = handleRow.findtext("szIb_packageid", default="").strip() 
+                                szSchemaNameStr = handleRow.findtext("szIb_schemaname", default="").strip()
+                                szPkgVerStr = handleRow.findtext("szIb_variantname", default="").strip()
+
+                            messageObj = messageDefinition(
+                                name=messageNameStr_,
+                                message_type=szMsgTypeStr,
+                                message_version=szMsgVerStr,
+                                package_id=szPkgIdStr,
+                                schema_name=szSchemaNameStr,
+                                package_ver=szPkgVerStr
+                            )
+                        
+                            return messageObj
+        return None
+
+    def _getDocumentDefinition(self, packageStr_: str, nameStr_: str, versionStr_: str, rootNode_) -> DocumentDefinition | None:
+
+
+        documentObj = None
+
+        # --- Esquema logico (LSDM): etiqueta y elementos
+        for instance in rootNode_.iter("instance"):
+            if instance.get("class") == "LSDM":  
+
+                defnNode = instance.find(".//rowset[@name='LSDEFN']")
+
+                if defnNode is not None:
+                    for docRow in defnNode.findall("row"):
+                        strPackageName = docRow.findtext("m_key.m_atmPackageName", default="").strip()
+                        strSchema = docRow.findtext("m_key.m_atmLogicalSchemaName", default="").strip()
+                        strVersion = docRow.findtext("m_key.m_atmVariantName", default="").strip()
+                        strLabel = docRow.findtext("m_atmLabel", default="").strip()
+
+                        #print(f"Debug Document: strPackageName={strPackageName}, strSchema={strSchema}, strVersion={strVersion}")
+
+                        if strPackageName == packageStr_ and strSchema == nameStr_ and strVersion == versionStr_:
+                            documentObj = DocumentDefinition(
+                                package = packageStr_,
+                                name = nameStr_,
+                                version = versionStr_,
+                                label = strLabel,
+                            )
+
+                            elementNode = instance.find(".//rowset[@name='LSELEMENT']")
+                            if elementNode is not None:
+                                for elementRow in elementNode.findall("row"):
+
+                                    elementNameStr = elementRow.findtext("m_atmName", default="").strip()
+
+                                    if elementRow.findtext("m_bIsCollection", default="0").strip() == "1":
+                                        elementTypeStr = "Collection"
+                                    elif elementRow.findtext("m_bIsCompound", default="0").strip() == "1":
+                                        elementTypeStr = "Compound"
+                                    else:
+                                        elementTypeStr = "Primitive"
+
+                                    documentObj.elements.append(DocumentElement(
+                                        name = elementNameStr,
+                                        sequence = int(elementRow.findtext("m_nSequenceNumber", default="0").strip() or 0),
+                                        element_type = elementTypeStr,
+                                        label = elementRow.findtext("m_atmLabel", default="").strip(),
+                                        is_required = elementRow.findtext("m_bIsRequired", default="0").strip() == "1",
+                                    ))
+
+                                return documentObj
+        return None
+
 
     def _getServiceOpDef(self, serviceOpDefStr_: str, rootNode_) -> serviceOperationDefinition | None:
         for instance in rootNode_.iter("instance"):            
@@ -1559,14 +1697,20 @@ class PSProject:
                 if menuNode is not None:
                     for menuRow in menuNode.findall("row"):
                         szMenuNameStr = menuRow.findtext("szMenuName", default="").strip()
-                                                    
+                        menuTypeStr = menuRow.findtext("eMenuType", default="").strip() # Main, Popup, etc.
+                              
                         if szMenuNameStr == menuNameStr_:
                             szDescrStr = menuRow.findtext("szDescr", default="").strip() 
 
                             menuDefnObj = MenuDefinition(
                                 name = menuNameStr_,
+                                menu_type = menuTypeStr,
                                 description = szDescrStr
                             )
+                            """
+                            Pendiente menu items. El problema es que trae todos los ítems, independiente de
+                            si son nuevos o ya existían
+                            """
 
                             return menuDefnObj
         return None
@@ -1880,6 +2024,10 @@ class PSProject:
                     self.app_engines.append(resultObj)
             case "34":
                 print(f"📄 Application Engine Section: {objectValue0_} handled in Application Engine Defintion")
+            case "37":
+                resultObj = self._getMessage(objectValue0_, rootNode_)
+                if resultObj is not None:
+                    self.messages.append(resultObj)                
             case "43":
                 print(f"📄 Application Engine Step: {objectValue0_} handled in Application Engine Defintion")
             case "40":
@@ -1915,7 +2063,8 @@ class PSProject:
                 resultObj = self._getPortalDefinition(objectValue0_, objectValue1_, objectValue2_, rootNode_)
                 if resultObj is not None:
                     self.portals.append(resultObj)
-            case "58":                
+            case "58":
+                # print(f"Application Package PeopleCode: {objectValue0_} {objectValue1_} {objectValue2_} {objectValue3_}")
                 if objectValue3_ =="":
                     resultObj = self._getAppPackagePeopleCode(objectValue0_, objectValue1_, objectValue2_, "OnExecute", rootNode_)
                     if resultObj is not None:
@@ -1935,6 +2084,11 @@ class PSProject:
                 resultObj = self._getBIReportDefinition(objectValue0_, rootNode_)
                 if resultObj is not None:
                     self.bi_reports.append(resultObj)
+            case "92":
+                print(f"Documentos: {objectValue0_} {objectValue1_}  {objectValue2_}")
+                resultObj = self._getDocumentDefinition(objectValue0_, objectValue1_, objectValue2_, rootNode_)
+                if resultObj is not None:
+                    self.documents.append(resultObj)
             case "116":
                 print(f"📄 Integration Broker: {objectValue0_}")
             case _:
@@ -1963,7 +2117,10 @@ def getProject(xml_path: str)  -> PSProject  | None:
                 projectObj = PSProject(project_name=projectNameStr.text.strip())
 
                 projectDescrStr = instance.find(".//rowset[@name='PjmDefn']/row/szProjectDescr")
+                projectDescrLong = instance.find(".//rowset[@name='PjmDefn']/row/hDescrLong/rowset[@name='char']/row/hDescrLong")
+
                 projectObj.description = projectDescrStr.text.strip() if projectDescrStr is not None and projectDescrStr.text else ""
+                projectObj.longdescription = projectDescrLong.text.strip() if projectDescrLong is not None and projectDescrLong.text else ""
 
                 for lpPit in instance.iter("lpPit"):
                     
@@ -1982,7 +2139,7 @@ def getProject(xml_path: str)  -> PSProject  | None:
                             objectValue1 = row.findtext("szObjectValue_1", default="").strip()
                             objectValue2 = row.findtext("szObjectValue_2", default="").strip()
                             objectValue3 = row.findtext("szObjectValue_3", default="").strip()
-                            objectValue4 = row.findtext("szObjectValue_3", default="").strip()                            
+                            objectValue4 = ""
 
                             projectObj._describeItems(objectTypeNode, objectValue0, objectValue1, objectValue2, objectValue3, objectValue4, root)
 

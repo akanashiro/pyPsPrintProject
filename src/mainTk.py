@@ -250,8 +250,11 @@ class App:
         )
         if path:
             self._xml_var.set(path)
+            """
             if not self._out_var.get():          # sugerir nombre de salida
-                self._out_var.set(str(Path(path).stem))
+                #self._out_var.set(str(Path(path).stem))
+            """
+            self._out_var.set(str(Path(path).parent / f"{Path(path).stem}.docx"))
 
     def _browse_output(self):
         path = filedialog.asksaveasfilename(

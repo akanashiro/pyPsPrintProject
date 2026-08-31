@@ -2,7 +2,7 @@
 
 This file logs major changes made in this project
 
-### Fully supported ✅
+### Supported ✅
 
 | Object | Details | Notes |
 |---|---|---|
@@ -22,6 +22,7 @@ This file logs major changes made in this project
 | **Permission List** | Users and access | Without menu.comp.pages (too much volume) |
 | **Application Package** | PeopleCode | - |
 | **Content Reference** | Folder and Content definition | Basic information |
+| **Documents** | Basic structure |-|
 
 ## Definitions that are partially or not supported
 
@@ -30,15 +31,21 @@ This file logs major changes made in this project
 | Object | Limitation | Workaround |
 |---|---|---|
 | **App Package** | Doesn't generate App Package info | Document manually |
+| **Menu** | Doesn't retrieve menu items | Document manually |
+| **Permission Lists**| NDoesn't retrieve menu items. It generates a huge amount of information.| Document manually |
 | **Page** | Doesn't generate any image | Document manually |
 | **PS Query** | Doesn't distinguish public/private. Doesn't generate SQL| Document manually |
 | **REST Service** | Only Operation, not other types | Document manually  |
 | **App Engine Steps** | Requires parent section in XML | Export complete section |
 | **Record Translate** | Depends on parent Field | Include Field in export |
+| **IB Service operations**| Only tested on REST|-|
+| **Messages** | Only tested on Document-based messages |-|
 
 ### Pending ⚙️
 - Application Package Definition
 - Update MD printing
+- Update project_template.docx
+- Lot of code clean up
 
 ### Not supported ❌
 
@@ -50,6 +57,14 @@ This file logs major changes made in this project
 
 ---
 # Changelog
+
+## [1.3.1] - 2026-09-01
+### Added
+- Had regressions with code to PSProject._find_instance_rows(). Code reverted to its original state.
+- Fix Application Package PeopleCode parsing
+- Added Message and Document object parsing
+- Fix minor details in projectDocParser.py
+- Deprecate some code related to markdown output
 
 ## [1.3.0] - 2026-07-06
 ### Added

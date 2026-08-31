@@ -72,85 +72,55 @@ def build_context(project: "PSProject", output_format: str) -> dict:
            # "has_xlat": bool(rf.translate_values),
         }
 
-    """ 
+    def formatSQL(sql) -> str:
+        rt = RichText()
+        lines = sql.split("\n")
+        for i, line in enumerate(lines):
+            rt.add(line, font="Courier New", size=18, color="#595959")
+            if i < len(lines) - 1:
+                rt.add("\a")
+        return  rt
+
     def pc_to_dict(pc):
+
+        # Convertir source_code a RichText para manejar saltos de línea
+        rt = RichText()
+        lines = (pc.source_code or "").split("\n")
+        for i, line in enumerate(lines):
+            rt.add(line, font="Courier New", size=18, color="#595959")
+            if i < len(lines) - 1:
+                rt.add("\a")   # \a = salto de línea en docxtpl (w:br)
+
+        partesLst = [pc.component, pc.record_name, pc.field_name, pc.event_type]
+        #print(f"Debug pc_to_dict: partesLst={partesLst}, full_name={'.'.join(parte for parte in partesLst if parte)}")
         return {
-            "record_name": pc.record_name,
-            "field_name": pc.field_name,
-            "event_type": pc.event_type,
-            "full_name": f"{pc.record_name}.{pc.field_name}.{pc.event_type}" if pc.field_name
-                         else f"{pc.record_name}.{pc.event_type}",
-            "source_code": pc.source_code,
-            #"functions": pc.functions,
-            #"has_functions": bool(pc.functions),
+            "component":    pc.component,
+            "market":       pc.market,                    
+            "record_name":  pc.record_name,
+            "field_name":   pc.field_name,
+            "event_type":   pc.event_type,
+            # "full_name":    f"{pc.component}.{pc.market}.{pc.record_name}.{pc.field_name}.{pc.event_type}" 
+            #                 if pc.component and pc.market and pc.record_name and pc.field_name and pc.event_type
+            #                   else f"{pc.record_name}.{pc.field_name}.{pc.event_type}",
+            "full_name":    ".".join(parte for parte in partesLst if parte),
+            "code_type":    pc.code_type,
+            "source_code":  rt,
         }
 
     def appPackage_pc_to_dict(pc):
+        rt = RichText()
+        lines = (pc.source_code or "").split("\n")
+        
+        for i, line in enumerate(lines):
+            rt.add(line)
+            if i < len(lines) - 1:
+                rt.add("\a")
         return {
-            "app_package": pc.app_package,
-            "code_type": pc.code_type,
-            "event": pc.event,
-            "source_code": pc.source_code,
-        }    
-    """
-    def pc_to_dict(pc, outStr: str):
-
-        match outStr:
-            case "md":
-                return {
-                    "component":    pc.component,
-                    "market":       pc.market,                    
-                    "record_name":  pc.record_name,
-                    "field_name":   pc.field_name,
-                    "event_type":   pc.event_type,
-                    "full_name": f"{pc.record_name}.{pc.field_name}.{pc.event_type}" if pc.field_name else f"{pc.record_name}.{pc.event_type}",
-                    "code_type":    pc.code_type,
-                    "source_code": pc.source_code
-                    #"functions": pc.functions,
-                    #"has_functions": bool(pc.functions),
-                }
-            case "docx":
-                # Convertir source_code a RichText para manejar saltos de línea
-                rt = RichText()
-                lines = (pc.source_code or "").split("\n")
-                for i, line in enumerate(lines):
-                    rt.add(line, font="Courier New", size=18, color="#595959")
-                    if i < len(lines) - 1:
-                        rt.add("\a")   # \a = salto de línea en docxtpl (w:br)
-                return {
-                    "component":    pc.component,
-                    "market":       pc.market,                    
-                    "record_name":  pc.record_name,
-                    "field_name":   pc.field_name,
-                    "event_type":   pc.event_type,
-                    "full_name":    f"{pc.record_name}.{pc.field_name}.{pc.event_type}" if pc.field_name else f"{pc.record_name}.{pc.event_type}",
-                    "code_type":    pc.code_type,
-                    "source_code":  rt,
-                }
-
-    def appPackage_pc_to_dict(pc, output: str):
-
-        match output:
-            case "md":
-                return {
-                    "app_package": pc.app_package,
-                    "code_type": pc.code_type,
-                    "event": pc.event,
-                    "source_code": pc.source_code,
-                }   
-            case "docx":
-                rt = RichText()
-                lines = (pc.source_code or "").split("\n")
-                for i, line in enumerate(lines):
-                    rt.add(line, font="Courier New", size=18, color="#595959")
-                    if i < len(lines) - 1:
-                        rt.add("\a")
-                return {
-                    "app_package":  pc.app_package,
-                    "code_type":    pc.code_type,
-                    "event":        pc.event,
-                    "source_code":  rt,
-                } 
+            "app_package":  pc.app_package,
+            "code_type":    pc.code_type,
+            "event":        pc.event,
+            "source_code":  rt,
+        } 
 
     def convertPc(pc, output: str) -> str:
 
@@ -211,12 +181,12 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         rec_dict = {
             "name": r.name,
             "record_type": r.record_type,
-            "description": r.description or "",
-            "parent_record": r.parent_record or "",
+            "description": r.description or "-",
+            "parent_record": r.parent_record or "-",
             "fields": [rf_to_dict(f) for f in r.fields],
             "field_count": len(r.fields),
             #"has_sql_view": bool(r.sql_view_text),
-            "sql_view_text": r.sql_view_text or "",
+            "sql_view_text": r.sql_view_text if bool(r.sql_view_text) else "-",
             "is_view": bool(r.record_type in ("View", "Dynamic View", "Query View")),
             "is_derived": r.record_type == "Derived/Work",
         }
@@ -243,8 +213,8 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         {
             "name": s.name,
             "sql_type": s.sql_type,
-            "description": s.description or "",
-            "sql_text": s.sql_text,
+            "description": s.description or "-",
+            "sql_text": s.sql_text if bool(s.sql_text) else "-",
         }
         for s in project.sql_objects
     ]
@@ -253,7 +223,7 @@ def build_context(project: "PSProject", output_format: str) -> dict:
     permission_lists = [
         {
             "name": pl.name,
-            "description": pl.description or "",
+            "description": pl.description or "-",
             "menu_items": pl.menu_items,
         }
         for pl in project.permission_lists
@@ -263,7 +233,7 @@ def build_context(project: "PSProject", output_format: str) -> dict:
     roles = [
         {
             "name": r.name,
-            "description": r.description or "",
+            "description": r.description or "-",
             "permissions": r.permissions,
             "permission_count": len(r.permissions),
         }
@@ -345,8 +315,8 @@ def build_context(project: "PSProject", output_format: str) -> dict:
     menus = [
         {
             "name": m.name,
-            #"menu_type": m.menu_type,
-            "description": m.description or "",
+            "menu_type": m.menu_type,
+            "description": m.description or "-",
             #"menu_items": m.menu_items,
         }
         for m in project.menus
@@ -357,7 +327,7 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         {
             "name": ae.name,
             "ae_type": ae.ae_type,
-            "description": ae.description or "",
+            "description": ae.description or "-",
             "disable_restart": ae.disable_restart,
             "aet_records": ae.aet_records,
             "temp_records": ae.temp_records,
@@ -430,7 +400,7 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         key = pc.record_name
         
         if pc.code_type == "Record":
-            pc_by_record.setdefault(key, []).append(pc_to_dict(pc, output_format))
+            pc_by_record.setdefault(key, []).append(pc_to_dict(pc))
         
     peoplecode_groups = [
         {"record_name": rec, "events": evts}            
@@ -444,7 +414,7 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         key = pc.record_name
         
         if pc.code_type == "Page":
-            pc_by_page.setdefault(key, []).append(pc_to_dict(pc, output_format))
+            pc_by_page.setdefault(key, []).append(pc_to_dict(pc))
     
     page_peoplecode_groups = [
         {"record_name": rec, "events": evts}
@@ -459,7 +429,7 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         key = pc.component
 
         if pc.code_type == "Component":
-            pc_by_comp.setdefault(key, []).append(pc_to_dict(pc, output_format))
+            pc_by_comp.setdefault(key, []).append(pc_to_dict(pc))
         
     pc_comp_groups = [
         {"component": comp, "events": evts}            
@@ -471,7 +441,7 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         key = pc.component
 
         if pc.code_type == "Component Record":
-            pc_by_cr.setdefault(key, []).append(pc_to_dict(pc, output_format))
+            pc_by_cr.setdefault(key, []).append(pc_to_dict(pc))
         
     pc_cr_groups = [
         {"component": comp, "events": evts}            
@@ -484,7 +454,7 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         key = pc.component
 
         if pc.code_type == "Component Record Field":
-            pc_by_crf.setdefault(key, []).append(pc_to_dict(pc, output_format))
+            pc_by_crf.setdefault(key, []).append(pc_to_dict(pc))
         
     pc_crf_groups = [
         {"component": comp, "events": evts}            
@@ -494,15 +464,43 @@ def build_context(project: "PSProject", output_format: str) -> dict:
 
     # --- Application Package PeopleCode (agrupado por App Package) ---
     pc_by_app_package: dict[str, list] = {}
+
     for pc in project.ap_peoplecode:
         key = pc.app_package
-        pc_by_app_package.setdefault(key, []).append(appPackage_pc_to_dict(pc, output_format))
+        pc_by_app_package.setdefault(key, []).append(appPackage_pc_to_dict(pc))
 
     ap_peoplecode_grp = [
         {"app_package": app_pkg, "events": evts}
         for app_pkg, evts in sorted(pc_by_app_package.items())
     ]    
 
+    # Documents
+    documents = [
+        {
+            "package": doc.package,
+            "name": doc.name,
+            "version": doc.version,
+            "label": doc.label or "",
+            "elements": doc.elements or [],
+            "physical_schemas": doc.physical_schemas or [],
+            "xsd": doc.xsd or ""
+        }
+        for doc in project.documents
+    ]
+
+    # Message
+    messages =[
+        {
+            "name" : msg.name,
+            "message_type" : msg.getMessageType(),
+            "message_type_code" : msg.message_type,
+            "message_version" : msg.message_version,
+            "package_id" : msg.package_id or "",
+            "schema_name" : msg.schema_name or "",
+            "package_ver" : msg.package_ver or ""
+        }
+        for msg in project.messages
+    ]
 
     # Service Operation
     service_operations = [
@@ -565,11 +563,17 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         "menus":             len(menus),        
         "processes":         len(processes),
         "jobs":              len(jobs),
-        "peoplecode_events": len(project.peoplecode),
-        "page_peoplecode_groups": len(page_peoplecode_groups),
-        "ap_peoplecode":     len(ap_peoplecode_grp),
+        #"peoplecode_events": len(project.peoplecode),
+        "record_pcode": len(peoplecode_groups),
+        "component_pcode":      len(pc_comp_groups),
+        "component_record_pcode": len(pc_cr_groups),
+        "component_record_field_pcode": len(pc_crf_groups),
+        "page_peoplecode":   len(page_peoplecode_groups),
+        "ap_peoplecode":     len(project.ap_peoplecode),
         "app_engines":       len(app_engines),
         "app_packages":      len(app_packages),
+        "documents":         len(documents),
+        "messages":          len(messages),
         "service_operations":len(service_operations),
         "msg_catalog":       len(msg_catalog),
         "file_layouts":      len(file_layouts),
@@ -580,9 +584,10 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         "portals":           len(portals),        
         "total":             sum([
             len(components), len(component_interfaces), len(records), len(fields),len(project.pages), len(sql_objects), len(processes), len(jobs),\
-            len(project.peoplecode), len(ap_peoplecode_grp),  len(service_operations), len(app_engines), len(msg_catalog),\
+            len(peoplecode_groups), len(pc_comp_groups), len(pc_cr_groups), len(pc_crf_groups), len(page_peoplecode_groups), len(project.ap_peoplecode),\
+            len(messages), len(documents), len(service_operations), len(app_engines), len(msg_catalog),\
             len(file_layouts), len(menus), len(permission_lists), len(queries), len(bi_reports), len(roles), len(portals),\
-            len(page_peoplecode_groups), len(app_packages)]
+            len(app_packages)]
         )
     }
 
@@ -592,6 +597,7 @@ def build_context(project: "PSProject", output_format: str) -> dict:
     return {
         "project_name":       project.project_name,
         "description":        project.description or "",
+        "longdescription":    project.longdescription or "",
         "summary":            summary,
         "has":                has,
         "components":         components,
@@ -619,7 +625,8 @@ def build_context(project: "PSProject", output_format: str) -> dict:
         "bi_reports":         bi_reports,
         "roles":              roles,
         "portals":            portals,
-
+        "messages":           messages,
+        "documents":          documents
     }
 
 
